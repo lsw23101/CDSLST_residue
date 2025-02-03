@@ -1,6 +1,7 @@
 # CDSLST_residue
+2월까지 시뮬레이션...
 
-To Do:
+# To Do:
 
 residue_encryption.py 파일에서 
 4 x N+2 크기 lwe 하는거 확인
