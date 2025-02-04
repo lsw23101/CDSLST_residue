@@ -106,7 +106,12 @@ for i in range(iter):
     
     start_time = time.time()  # 시작 시간 기록 
     
-    disturbance = 0 if i != 10 else 0
+    # 50번째 이터레이션에서 disturbance 값을 1로 설정
+    disturbance = 0
+    if i == 10:
+        disturbance = 0
+    elif i == 49:  # 50번째 이터레이션에 disturbance 값을 1로 설정
+        disturbance = 0.001
     print("iteration:", i+1, "번째")
     
     #########################################################
@@ -120,6 +125,7 @@ for i in range(iter):
     #########################################################
     
 
+
     #########################################################
     ############## Encrypted controller ############## 
     
@@ -131,7 +137,7 @@ for i in range(iter):
 
     Y.append(float((C @ Xp[-1]).item()))  # Y에 스칼라 값 저장
     qY.append(int(np.round(Y[-1] / r).astype(int)))
-    cY.append(lwe.Enc(qY[-1], sk, env))
+    cY.append(lwe.Enc_res(qY[-1], sk, Bx, M,env))
 
     # controller
     cU.append(lwe.Mod(qP @ cX0, env.q))
@@ -140,17 +146,20 @@ for i in range(iter):
     # cresi [1/sr resi , A, B]
 
     # actuator
-    qU.append(lwe.Dec(cU[-1], sk, env))
-    U.append(qU[-1] * r * s * s)  
+    qU.append(lwe.Dec_res(cU[-1], sk, env))
+    U.append(qU[-1] * r * s * s + disturbance)  
 
     
-    #################################################################
-    ######################### residue disclose #########################
-    #################################################################
-    # 이제 복호화 할 필요 x resi.append(lwe.Dec(cresi[-1],sk,env)) # 복호화 1/sr at actuator
-    # 그냥 위에서 나온 cresi의 맨 앞 열에 s 만 곱해주고 퍼블릭키랑 sk 부분은 0으로 채워넣기 
-    resi.append(lwe.Enc(np.round(float(resi[-1] * s)).astype(int), sk, env))  # 1/r scaled & controller auxiliary input
 
+    ######################### residue disclose #########################
+
+    # 1x(N+2) 크기의 배열 생성
+    residue_array = np.zeros((1, env.N + 2), dtype=object)
+    residue_array[0, 0] = np.round(float(cresi[-1][0, 0] * s)).astype(int)  # 첫 번째 요소 사용
+
+
+    # 리스트에 추가
+    resi.append(residue_array)
 
     #################################################################
     ######################### state update  #########################
@@ -173,14 +182,15 @@ for i in range(iter):
     end_time = time.time()  # 종료 시간 기록
     execution_times.append(end_time - start_time)  # 실행 시간 저장
 
-    # ########### TO DEBUG ################
-    # print("cX0: ", cX0)
-    # print("cU: ", cU[-1])
-    # print("cY: ", cY[-1])
-    # print("re_enc_resi: ", re_enc_resi[-1])
+    ########### TO DEBUG ################
+    print("cX0: ", cX0)
+    print("cU: ", cU[-1])
+    print("cY: ", cY[-1])
+    print("resi: ", resi[-1])
     
 avg_execution_time = sum(execution_times) / iter
 print(f"\n평균 이터레이션 실행 시간: {avg_execution_time * 1000:.3f} ms")
+
 
 
 # Convert lists to arrays for plotting
@@ -190,24 +200,41 @@ y_ = np.hstack(y_).flatten()
 Y = np.hstack(Y).flatten()
 diff_u = np.hstack(diff_u).flatten()
 diff_Xc = np.hstack(diff_Xc).flatten()
+# Convert resi to a 1D numpy array containing only the first element of each 1x6 array
+resi_flat = np.array([i[0, 0]*r for i in resi])  # 각 1x6 배열에서 첫 번째 값만 추출
+
+
 time = Ts * np.arange(iter)
+
+# Plotting
 plt.figure(1)
-plt.plot(time, u_, label='original 1')
 plt.plot(time, U, label='encrypted 1')
-plt.title('Control input and residue')
+plt.title('encrpted input')
 plt.legend()
 
 plt.figure(2)
 plt.plot(time, y_, label='original 1')
-plt.plot(time, Y, label='encrypted 1')
-plt.title('Plant output y')
+plt.title('original output y')
 plt.legend()
 
 plt.figure(3)
+plt.plot(time, u_, label='original 1')
+plt.title('original input u')
+plt.legend()
+
+plt.figure(4)
+plt.plot(time, resi_flat, label='residue')  # residue 플로팅
+plt.title('Residue Disclosure')
+plt.legend()
+
+plt.figure(5)
 plt.plot(time, diff_u, label='u_ - U')
 plt.title('Difference between u_ and U')
 plt.legend()
 
+plt.figure(6)
+plt.plot(time, Y, label='encrypted 1')
+plt.title('encrypted output Y')
+plt.legend()
 
 plt.show()
-

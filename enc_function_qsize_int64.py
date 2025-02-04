@@ -9,10 +9,10 @@ from decimal import Decimal
 class params:
     def __init__(self):
         # 여기서 K의 최댓값은 355,700,000
-        self.p = int(2**60)  # p 값 m x k 가 p를 넘지 않도록...
+        self.p = int(2**70)  # p 값 m x k 가 p를 넘지 않도록...
         self.L = int(2**4)  # L 값 e x k 가 L을 넘지 않도록... 
         self.r = 10         # 오류 범위
-        self.N = 1000     # 키 차원 
+        self.N = 4096     # 키 차원 
         self.q = self.p * self.L
         
 env = params()
