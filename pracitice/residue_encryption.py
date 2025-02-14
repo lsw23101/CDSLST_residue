@@ -92,9 +92,9 @@ def Enc_res(m, sk, Bx, M, env):
     m = np.round(m).astype(object)  # 메시지가 float일 경우 반올림 처리
     
     mask = M @ Bx
-
+    print("mask", Mod(mask,env.q))
     k = Mod(A @ sk + e + mask, env.q)  # 마스크된 메시지
-
+    print("k", k)
     # 암호문 조합
     ciphertext = Mod(np.hstack((-mask + env.L*m , A, k)), env.q)
     return ciphertext

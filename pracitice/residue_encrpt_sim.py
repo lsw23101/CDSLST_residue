@@ -77,7 +77,7 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 100
+iter = 10
 execution_times = []  # 실행 시간을 저장할 리스트
 
 xp0 = np.array([[0], [0], [0.005], [0]])
@@ -143,7 +143,7 @@ for i in range(iter):
     cU.append(lwe.Mod(qP @ cX0, env.q))
     cresi.append(lwe.Mod(qH @ cX0 + qJ * cY[-1], env.q))  # encrypted controller output r
     # 여기서 나오는 cresi는 이론상 1/sr 로 스케일링 된 마스킹 파트가 없는 값
-    # cresi [1/sr resi , A, B]
+    print("cresi", cresi[-1])
 
     # actuator
     qU.append(lwe.Dec_res(cU[-1], sk, env))
@@ -161,19 +161,21 @@ for i in range(iter):
     # 리스트에 추가
     resi.append(residue_array)
 
+    print("resi",resi[-1])
+
     #################################################################
     ######################### state update  #########################
     #################################################################
     
     # plant state update
     Xp.append(A @ Xp[-1] + B @ U[-1])  
-
+    print("업데이트 전 Xc: ", r*s*lwe.Dec_res(cX0,sk,env))
     # controller state update
     cX0 = lwe.Mod(F_ @ cX0 + qG @ cY[-1] + qR @ resi[-1],env.q) 
-
+    # print("resi", resi[-1])
     # output masking part update 
     Bx = W @ Bx
-
+    print("업데이트 후 Xc: ", r*s*lwe.Dec_res(cX0,sk,env))
 
     # state difference comparing
     diff_u.append(u_[-1] - U[-1])

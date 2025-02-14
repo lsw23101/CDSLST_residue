@@ -4,28 +4,31 @@ import numpy as np
 import random
 from decimal import Decimal
 
+from sympy import mod_inverse
+
 # 환경 변수 설정
 class params:
     def __init__(self):
         # 여기서 K의 최댓값은 355,700,000
-        self.p = int(2**70)  # p 
-        self.L = int(2**4)  # L 
+        self.p = int(2**54)  # p 
+        self.L = int(2**10)  # L 
         self.r = 10         # 오류 범위
-        self.N = 4000     # 키 차원 
-        self.q = self.p * self.L + 37 # 2^74+37 근처 소수 18889465931478580854821  // 230419
+        self.N = 3     # 키 차원 
+        self.q = self.p * self.L -59 # 2^64 근처 소수 18446744073709551557
         
 env = params()
 
-# 모듈러 값의 범위를 -p/2 ~ p/2로 조절 (biased modular)
 def Mod(x, p):
-    y = x % p
-    y -= (y >= p / 2) * p  # 범위 조정
-    return y  # 정수 변환 (오버플로 방지)
+    y = np.mod(x, p)  # 요소별 모듈러 계산
+    y -= (y >= p / 2) * p  # 범위 조정 (biased modular)
+    return y
+
 
 def Seret_key(env):
     return Mod(np.array([[random.randint(0, env.q - 1)] for _ in range(env.N)], dtype=object),env.q)
 
 sk = Seret_key(env) 
+print("sk", sk)
 
 # 암호화 함수
 
@@ -45,14 +48,15 @@ def Enc_state(m_vec, sk, env):
     b = Mod(mask + env.L * m_vec, env.q)  # 마스크된 메시지
 
     # print("b",b)
+    
     # 암호문 조합
     ciphertext = Mod(np.hstack((b, A, np.zeros((n, 1), dtype=object))), env.q)
-
+    # print("ciphertext", ciphertext)
     return ciphertext, mask
 
 # 암호화 함수
 def Enc_res(m, sk, Bx, M, env):
-    n = 2  # 메시지는 스칼라 값
+    n = 2  # 메시지는 y 가 2차원
 
     # `np.random.randint()` 대신 Python `random.randint()` 사용하여 A 생성
     A = np.array([[random.randint(0, env.q - 1) for _ in range(env.N)] for _ in range(n)], dtype=object)
@@ -73,6 +77,7 @@ def Enc_res(m, sk, Bx, M, env):
 
 def Dec_res(c, sk, env):
     s = np.vstack((1, -sk, 1))  # 키 벡터
+
     decrypted = Mod(c @ s, env.q)  # 암호문 연산 후 모듈러 연산 추가
 
     # Decimal 사용하여 안전한 나눗셈 수행

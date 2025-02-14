@@ -33,7 +33,7 @@ sk = Seret_key(env)
 
 # 암호화 함수
 def Enc(m, sk, env):
-    n = 1  # 메시지는 스칼라 값
+    n = 2  # 메시지는 스칼라 값
 
     # `np.random.randint()` 대신 Python `random.randint()` 사용하여 A 생성
     A = np.array([[random.randint(0, env.q - 1) for _ in range(env.N)] for _ in range(n)], dtype=object)

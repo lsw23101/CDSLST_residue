@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import residue_encryption as lwe
+import residue_encryption_mimo as lwe
 import time
 
 np.seterr(over='raise', invalid='raise')  # 오버플로우 및 NaN 발생 시 에러 발생
@@ -14,64 +14,69 @@ sk = lwe.Seret_key(env)
 Ts = 0.01
 
 ############ Plant Model #################
-A = np.array([[0,1.0000,0,0],
-              [0, -0.18181818, 2.6727272727, 0],
-              [0, 0, 0, 1],
-              [0, -0.454545454545455, 31.181818181818183 , 0]])  
+A = np.array([[1.000000000000000,   0.009990914092165,   0.000133590122189,   0.000000445321570],
+              [0,   0.998183267746166,   0.026716874509824,   0.000133590122189],
+              [0,  -0.000022719408536,   1.001559293628154,   0.010005197273892],
+              [0,  -0.004543686141126,   0.311919519484923,   1.001559293628154]])  
 
-B = np.array([[0], [1.818181818181818], [0], [4.545454545454545]])  
+B = np.array([[0.000090859078355], [0.018167322538343], [0.000227194085355], [0.045436861411265]])  
 
-C = np.array([[1, 0, 0, 0]])
+C = np.array([[1, 0, 0, 0],
+              [0, 0, 1, 0]])
 
 ############ Controller Model with Re-Enc #################
-P_ = np.array([[26.764044067755723,  -3.411123558416056,  -4.004428767874934,   6.486702413258127]])  
+P_ = np.array([[166.7649500932678,  -343.3036034568399,   191.2950525039590,  -375.9993296712517]])  
 
-F_ = np.array([[2, 0, 0, 0],
-               [0, -1, 0, 0],
-               [0, 0, 1, 0],
+F_ = np.array([[0, 0, 1, 0],
+               [0, 0, 0, 1],
+               [0, 0, 0, 0],
                [0, 0, 0, 0]])  
 
-G_ = np.array([[0.098788567373498,   0.741547543735860], 
-               [-0.-0.178520713880676,  -1.710860664891618], 
-               [-0.177926074751512,   1.7082391647592755990242],
-                [0.000000000000000,  -0.972138245712111]])  
+G_ = np.array([[2.000080188918234,  -0.001651538104192], 
+               [0.000200427012610,   1.997505091139706], 
+               [-1.017587878969169,   0.034840555021392],
+                [-0.043960720399405,  -0.912508187845338]])  
 
-R_ = np.array([[-0.216563211396178,  -4.621550639415747],
-                [0.147762481068795,   1.079747180790786],
-                [-0.154544370064038, -1.072493915973809], 
-                [0.685905670003470,  17.058514271986066]])  
+R_ = np.array([[-1.385053666059764,   0.023478810983923],
+                [-0.029666346901495,  -1.306187359453585],
+                [0.385319459150226,  -0.010982835361269], 
+                [0.016718748685899,   0.347376172809300]])  
 
-H_ = np.array([[0.782119645266734,   2.693164791866003,   2.701109506937756,   0.188434885943526],
-               [3.905418875245240,  -0.537839028672170,  -0.544108319351443,   0.943829735557444]])  
+H_ = np.array([[-1.016472301380767,   0.034118420398921,   0,   0],
+               [-0.041189163633078,  -0.915094903590375,  0,   0]])  
 
 J_ = np.array([[1, 0],
-               [0, 1]])
+               [0, 1]]).astype(int)
 
 
 # Quantization parameters
-r = 0.00001
+r = 0.0001
 s = 0.0001
+
 qG = np.round(G_ / s).astype(int)
 qH = np.round(H_/ s).astype(int)
 qP = np.round(P_ / s).astype(int)
 qJ = np.round(J_ / s**2).astype(int)
 qR = np.round(R_ / s).astype(int)
 
-
+print(qJ)
 ############ Equivalent input with XC = [0 0 0.001 0]  ##########
-J_inv = 4352491850465363121987 # GPT로 구한 inverse....
+J_inv = (2342055259102470954 * J_).astype(object) # GPT로 구한 2^64-59에서의 10^6의 inverse....
+# J_inv = np.array([[2342055259102470954, 0],
+#                 [0, 2342055259102470954]]).astype(int)
+
+print(2342055259102470954*100000000)
+print("J_inv @ qJ ", J_inv @ qJ)
 
 
-M = J_inv * qH  # 원본 계산
-W = F_ - qG @ (J_inv * qH)  # 원본 계산
+M = np.vectorize(lambda x: int(lwe.Mod(x, env.q)))(J_inv @ qH)
+W = np.vectorize(lambda x: int(lwe.Mod(x, env.q)))(F_ - qG @ J_inv @ qH)
 
 
 
 print("M", M)
 print("W", W)
-
-
-print("To check multiplicative inverse of J: ", bool(lwe.Mod(J_inv*qJ, env.q)))
+print("inverse check", lwe.Mod(2342055259102470954*100000000, env.q))
 
 
 print("qP:", qP)
@@ -80,16 +85,15 @@ print("qR:", qR)
 print("qH:", qH)
 print("qJ:", qJ)
 
-
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 100
+iter = 2000
 execution_times = []  # 실행 시간을 저장할 리스트
 
-xp0 = np.array([[0], [0], [0.005], [0]])
-xc0 = np.array([[0], [0], [0.001], [0]])
+xp0 = np.array([[0], [0], [0.1], [0]])
+xc0 = np.array([[0], [0], [0], [0]])
 # Initialize variables with proper int conversion at the beginning
 
 xp, xc, u, y = [xp0], [xc0], [], []
@@ -100,9 +104,10 @@ diff_u, diff_Xc = [], []
 
 qX0 = np.round(xc0 / (r * s)).astype(int)
 
+print("qX0: ",qX0)
 # Encrypted controller initial state
 cX0, Bx = lwe.Enc_state(qX0, sk, env)  # 여긱서 암호화 할때 cX0 의 마스킹 파트도 뽑아냄
-
+print("암호화 된 Xc",cX0)
 # Simulation loop
 
 for i in range(iter):
@@ -111,19 +116,23 @@ for i in range(iter):
     
     # 50번째 이터레이션에서 disturbance 값을 1로 설정
     disturbance = 0
-    if i == 10:
-        disturbance = 0
-    elif i == 49:  # 50번째 이터레이션에 disturbance 값을 1로 설정
-        disturbance = 0.001
+    if i == 200:
+        disturbance = -4
+    elif i == 500:  # 50번째 이터레이션에 disturbance 값을 1로 설정
+        disturbance = 4
+    elif i == 800:  # 50번째 이터레이션에 disturbance 값을 1로 설정
+        disturbance = 8
+    
     print("iteration:", i+1, "번째")
     
     '''############# Converted controller ############## '''
 
     y_.append(C @ x_p[-1])
     u_.append(P_ @ x_c[-1] + disturbance)
-    r_.append(H_ @ x_c[-1] + J_ * y_[-1])
+    r_.append(H_ @ x_c[-1] + J_ @ y_[-1])
     x_p.append(A @ x_p[-1] + B @ u_[-1])
     x_c.append(F_ @ x_c[-1] + G_ @ y_[-1] + R_ @ r_[-1])
+
     #########################################################
     #########################################################
     
@@ -137,13 +146,19 @@ for i in range(iter):
 
     # sensor
 
-    Y.append(float((C @ Xp[-1]).item()))  # Y에 스칼라 값 저장
-    qY.append(int(np.round(Y[-1] / r).astype(int)))
+    Y.append(C @ Xp[-1])  # Y에 스칼라 값 저장
+    qY.append(np.vectorize(lambda x: int(round(x)))(Y[-1] / r)) 
     cY.append(lwe.Enc_res(qY[-1], sk, Bx, M,env))
 
+    print("Y", Y[-1][0])
+    print("cY", cY[-1])
     # controller
     cU.append(lwe.Mod(qP @ cX0, env.q))
-    cresi.append(lwe.Mod(qH @ cX0 + qJ * cY[-1], env.q))  # encrypted controller output r
+
+    ## 여기서 cresi가 첫 이터레이션때는 1이 나와야 됨
+    cresi.append(lwe.Mod(qH @ cX0 + qJ @ cY[-1], env.q))  # encrypted controller output r ## 여깃 ㅓ틀먹었네 
+
+    print("cresi[-1]", cresi[-1])
     # 여기서 나오는 cresi는 이론상 1/sr 로 스케일링 된 마스킹 파트가 없는 값
     # cresi [1/sr resi , A, B]
 
@@ -159,13 +174,16 @@ for i in range(iter):
 
     ######################### residue disclose #########################
 
-    # 1x(N+2) 크기의 배열 생성
-    residue_array = np.zeros((1, env.N + 2), dtype=object)
-    residue_array[0, 0] = np.round(float(cresi[-1][0, 0] * s**2)).astype(int)  # 첫 번째 요소 사용
+    # 2x(N+2) 크기의 배열 생성
+    residue_array = np.zeros((2, env.N + 2), dtype=object)
+    # 첫 번째 열에 cresi[-1]을 s**2 곱한 값으로 업데이트
+    residue_array[0, 0] = int(round(cresi[-1][0, 0] *s*s))  # 첫 번째 행 첫 번째 열
+    residue_array[1, 0] = int(round(cresi[-1][1, 0] *s*s))  # 두 번째 행 첫 번째 열
 
+    # 여기서 만든 residue array가 Xc 업데이트에 쓰일 예정
 
-    # 리스트에 추가
-    resi.append(residue_array)
+    # 2x1 배열만 추가 (첫 번째 열)
+    resi.append(r*residue_array[:, 0])  # 첫 번째 열에 해당하는 2x1 배열 추가
 
     #################################################################
     ######################### state update  #########################
@@ -174,8 +192,14 @@ for i in range(iter):
     # plant state update
     Xp.append(A @ Xp[-1] + B @ U[-1])  
 
+    # print("암호화 된 Xc",cX0)
+    print("업데이트 전 Xc: ", r*s*lwe.Dec_res(cX0,sk,env))
     # controller state update
-    cX0 = lwe.Mod(F_ @ cX0 + qG @ cY[-1] + qR @ resi[-1],env.q) 
+    cX0 = lwe.Mod(F_ @ cX0 + qG @ cY[-1] + qR @ residue_array,env.q) 
+    
+    print("residue_array", residue_array)
+    ########### TO DEBUG ################
+    print("업데이트 후 Xc: ", r*s*lwe.Dec_res(cX0,sk,env))
 
     # output masking part update 
     Bx = W @ Bx
@@ -189,38 +213,31 @@ for i in range(iter):
     execution_times.append(end_time - start_time)  # 실행 시간 저장
 
     ########### TO DEBUG ################
-    print("cX0: ", cX0)
-    print("cU: ", cU[-1])
-    print("cY: ", cY[-1])
-    print("resi: ", resi[-1])
+
     
 avg_execution_time = sum(execution_times) / iter
 print(f"\n평균 이터레이션 실행 시간: {avg_execution_time * 1000:.3f} ms")
 
 
-
-
 # Convert lists to arrays for plotting
 u_ = np.hstack(u_).flatten()
 U = np.hstack(U).flatten()
-y_ = np.hstack(y_).flatten()
-Y = np.hstack(Y).flatten()
+y_ = np.hstack(y_)[1, :].flatten()  # y_의 두 번째 행만 추출
+Y = np.hstack(Y)[1, :].flatten()  # Y의 두 번째 행만 추출
 diff_u = np.hstack(diff_u).flatten()
 diff_Xc = np.hstack(diff_Xc).flatten()
-# Convert resi to a 1D numpy array containing only the first element of each 1x6 array
-resi_flat = np.array([i[0, 0]*r for i in resi])  # 각 1x6 배열에서 첫 번째 값만 추출
-
-
+# 예시 수정 (resi가 리스트의 리스트인 경우)
+resi_flat = np.hstack([r[0] for r in resi]).flatten()  # 각 1x6 배열에서 첫 번째 값만 추출
 time = Ts * np.arange(iter)
 
 # Plotting
 plt.figure(1)
 plt.plot(time, U, label='encrypted 1')
-plt.title('encrpted input')
+plt.title('encrypted input')
 plt.legend()
 
 plt.figure(2)
-plt.plot(time, y_, label='original 1')
+plt.plot(time, y_, label='original 1 (y_ second row)')
 plt.title('original output y')
 plt.legend()
 
@@ -230,7 +247,7 @@ plt.title('original input u')
 plt.legend()
 
 plt.figure(4)
-plt.plot(time, resi_flat, label='residue')  # residue 플로팅
+plt.plot(time, r*resi_flat, label='residue')  # residue 플로팅
 plt.title('Residue Disclosure')
 plt.legend()
 
@@ -240,7 +257,7 @@ plt.title('Difference between u_ and U')
 plt.legend()
 
 plt.figure(6)
-plt.plot(time, Y, label='encrypted 1')
+plt.plot(time, Y, label='encrypted 1 (Y second row)')
 plt.title('encrypted output Y')
 plt.legend()
 
