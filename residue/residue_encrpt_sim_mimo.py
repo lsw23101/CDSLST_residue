@@ -89,10 +89,12 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 2000
+iter = 1000
 execution_times = []  # 실행 시간을 저장할 리스트
 
-xp0 = np.array([[0], [0], [0.1], [0]])
+# 초기값
+
+xp0 = np.array([[0], [0], [0.01], [0]])
 xc0 = np.array([[0], [0], [0], [0]])
 # Initialize variables with proper int conversion at the beginning
 
@@ -114,15 +116,11 @@ for i in range(iter):
     
     start_time = time.time()  # 시작 시간 기록 
     
-    # 50번째 이터레이션에서 disturbance 값을 1로 설정
+    # 외부 attack 을 800 이터레이션때
     disturbance = 0
-    if i == 200:
-        disturbance = -4
-    elif i == 500:  # 50번째 이터레이션에 disturbance 값을 1로 설정
-        disturbance = 4
-    elif i == 800:  # 50번째 이터레이션에 disturbance 값을 1로 설정
-        disturbance = 8
-    
+    if i == 400:
+        disturbance = 6
+
     print("iteration:", i+1, "번째")
     
     '''############# Converted controller ############## '''
@@ -218,7 +216,6 @@ for i in range(iter):
 avg_execution_time = sum(execution_times) / iter
 print(f"\n평균 이터레이션 실행 시간: {avg_execution_time * 1000:.3f} ms")
 
-
 # Convert lists to arrays for plotting
 u_ = np.hstack(u_).flatten()
 U = np.hstack(U).flatten()
@@ -226,39 +223,37 @@ y_ = np.hstack(y_)[1, :].flatten()  # y_의 두 번째 행만 추출
 Y = np.hstack(Y)[1, :].flatten()  # Y의 두 번째 행만 추출
 diff_u = np.hstack(diff_u).flatten()
 diff_Xc = np.hstack(diff_Xc).flatten()
-# 예시 수정 (resi가 리스트의 리스트인 경우)
 resi_flat = np.hstack([r[0] for r in resi]).flatten()  # 각 1x6 배열에서 첫 번째 값만 추출
 time = Ts * np.arange(iter)
 
 # Plotting
-plt.figure(1)
-plt.plot(time, U, label='encrypted 1')
-plt.title('encrypted input')
+plt.figure(figsize=(12, 8))
+
+# 1. Original input (u_) vs Encrypted input (U)
+plt.subplot(2, 2, 1)
+plt.plot(time, u_, label='Original u', linestyle='--', color='b')
+plt.plot(time, U, label='Encrypted U', linestyle='-', color='r')
+plt.title('Input Comparison (Original vs. Encrypted)')
 plt.legend()
 
-plt.figure(2)
-plt.plot(time, y_, label='original 1 (y_ second row)')
-plt.title('original output y')
+# 2. Original output (y_) vs Encrypted output (Y)
+plt.subplot(2, 2, 2)
+plt.plot(time, y_, label='Original y', linestyle='--', color='b')
+plt.plot(time, Y, label='Encrypted Y', linestyle='-', color='r')
+plt.title('Output Comparison (Original vs. Encrypted)')
 plt.legend()
 
-plt.figure(3)
-plt.plot(time, u_, label='original 1')
-plt.title('original input u')
-plt.legend()
-
-plt.figure(4)
-plt.plot(time, r*resi_flat, label='residue')  # residue 플로팅
-plt.title('Residue Disclosure')
-plt.legend()
-
-plt.figure(5)
-plt.plot(time, diff_u, label='u_ - U')
+# 3. Difference between u_ and U
+plt.subplot(2, 2, 3)
+plt.plot(time, diff_u, label='Difference (u_ - U)', color='g')
 plt.title('Difference between u_ and U')
 plt.legend()
 
-plt.figure(6)
-plt.plot(time, Y, label='encrypted 1 (Y second row)')
-plt.title('encrypted output Y')
+# 4. Residue Disclosure
+plt.subplot(2, 2, 4)
+plt.plot(time, r * resi_flat, label='Residue', color='m')
+plt.title('Residue Disclosure')
 plt.legend()
 
+plt.tight_layout()
 plt.show()

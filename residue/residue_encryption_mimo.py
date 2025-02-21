@@ -4,7 +4,7 @@ import numpy as np
 import random
 from decimal import Decimal
 
-from sympy import mod_inverse
+# from sympy import mod_inverse
 
 # 환경 변수 설정
 class params:

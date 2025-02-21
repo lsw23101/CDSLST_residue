@@ -45,21 +45,24 @@ B = sysD.B;
 [l,~] = size(C);
 
 % controller design
-% Q = eye(n);
-Q = [1 0 0 0; 
-     0 1 0 0;
-     0 0 1 0;
-     0 0 0 1];
+Q1 = 100*eye(n);
+Q2 = 1*eye(n);
 
-R1 = 1 * eye(m);
-R2 = eye(l);
-[~, K, ~] = idare(A,B,Q,R1,[],[]);
+% Q = [10 0 0 0; 
+%      0 1 0 0;
+%      0 0 10 0;
+%      0 0 0 1];
+
+R1 = 10 * eye(m);
+R2 = 1 * eye(l);
+[~, K, ~] = idare(A,B,Q1,R1,[],[]);
 K = -K;
-[~, L, ~] = idare(A.', C.', Q, R2, [], []);
+[~, L, ~] = idare(A.', C.', Q2, R2, [], []);
 L = L.';
 
+% 부호 주의
 
-F = A+B*K-L*C; % 여기 부호를 어떻게 해야되는거지
+F = A+B*K-L*C; 
 G = L;
 H = -C;
 J = [1 0; 0 1];
@@ -79,11 +82,11 @@ P = K;
 e1 = [0; 1; 0; 0;];
 e2 = [0; 0; 0; 1;];
 
-T = inv([F*e1 F*e2 e1 e2]) / 100
-norm(T)
+T = inv([F*e1 F*e2 e1 e2]) / 100;
+
 H_can = H/T;
 F_can = T*F/T;
-R = inv(T) * F_can(:, 1:2) /  H_can(:, 1:2)
+R = inv(T) * F_can(:, 1:2) /  H_can(:, 1:2);
 
 % Convert to modal canonical form
 
@@ -110,15 +113,15 @@ s = 0.0001; % 10^-6까지 가야함...
  
 % quantization of control parameters
 qG = round(G_/s);
-qH = round(H_/s)
+qH = round(H_/s);
 qP = round(P_/s);
 qJ = round(J_/(s*s));
-qR = round(R_/s)
+qR = round(R_/s);
 
 
 %% Simulation
-iter = 1000;
-xp0 = [0; 0; 0.005; 0];
+iter = 5000;
+xp0 = [0; 0; 0.01; 0];
 xc0 = [0; 0; 0; 0];
 
 % variables for simulation with original controller
@@ -206,30 +209,34 @@ for i = 1:iter
 end
 
 %% 여기까지 정수화로 변환한 친구랑 원래 시스템 플랏 비교하기
-% Control Input Plot
-figure(2)
-plot(Ts*(0:iter-1), u) % Original control input
-hold on
-plot(Ts*(0:iter-1), U) % Quantized control input
-title('Control Input (u)', 'FontSize', 14)
-legend('Original Controller', 'Quantized Controller', 'FontSize', 12)
-grid on
+figure(1);
+clf; % 기존 figure 내용을 지움
 
-% Plant Output Plot
-figure(1)
-plot(Ts*(0:iter-1), y(1,:)) % x position from original
-hold on
-plot(Ts*(0:iter-1), Y(1,:)) % x position from quantized
-plot(Ts*(0:iter-1), y(2,:)) % phi angle from original
-plot(Ts*(0:iter-1), Y(2,:)) % phi angle from quantized
-title('Plant Output (y)', 'FontSize', 14)
+% 1. Control Input (u)
+subplot(1, 2, 1);
+plot(Ts*(0:iter-1), u, 'b--', 'LineWidth', 1.5); % Original control input
+hold on;
+plot(Ts*(0:iter-1), U, 'r-', 'LineWidth', 1.5); % Quantized control input
+title('Control Input (u)', 'FontSize', 14);
+legend('Original Controller', 'Quantized Controller', 'FontSize', 12);
+grid on;
+xlabel('Time (s)');
+ylabel('Control Input');
+ylim([-0.5, 0.5]); % 필요에 따라 조정
+
+% 2. Plant Output (y)
+subplot(1, 2, 2);
+plot(Ts*(0:iter-1), y(1,:), 'b--', 'LineWidth', 1.5); % x position from original
+hold on;
+plot(Ts*(0:iter-1), Y(1,:), 'r-', 'LineWidth', 1.5); % x position from quantized
+plot(Ts*(0:iter-1), y(2,:), 'g--', 'LineWidth', 1.5); % phi angle from original
+plot(Ts*(0:iter-1), Y(2,:), 'm-', 'LineWidth', 1.5); % phi angle from quantized
+title('Plant Output (y)', 'FontSize', 14);
 legend('x position (Original)', 'x position (Quantized)', ...
-       'phi angle (Original)', 'phi angle (Quantized)', 'FontSize', 12)
-grid on
+       'phi angle (Original)', 'phi angle (Quantized)', 'FontSize', 12);
+grid on;
+xlabel('Time (s)');
+ylabel('System Output');
+ylim([-0.05, 0.05]); % 필요에 따라 조정
 
-figure(3)
-plot(Ts*(0:iter-1), diff_u)
-
-
-grid on
-
+sgtitle('Comparison of Original vs. Quantized System', 'FontSize', 16); % 전체 제목 추가
