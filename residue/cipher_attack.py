@@ -89,7 +89,7 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 5000
+iter = 1003
 execution_times = []  # 실행 시간을 저장할 리스트
 
 # 초기값
@@ -116,13 +116,13 @@ for i in range(iter):
     
     start_time = time.time()  # 시작 시간 기록 
     
-    # 외부 impulse 어택을 400 이터레이션 때
+    # 외부 impulse 어택
     disturbance = 0
     if i > 2000 and i <2100:
         if i % 2 == 1:
-            disturbance = 10
+            disturbance = 0
         else:
-            disturbance = -10
+            disturbance = 0
             
 
     print("iteration:", i+1, "번째")
@@ -156,6 +156,11 @@ for i in range(iter):
     # print("cY", cY[-1])
     # controller
     cU.append(lwe.Mod(qP @ cX0, env.q))
+    if i == 995:  # 2000번째 iteration에서만 수행
+        # error = np.random.normal(loc=0, scale=3, size=cU[-1].shape)  # 가우시안 분포에서 샘플링
+        # error = np.round(error).astype(int)  # 정수로 변환
+        # error = np.clip(error, -10, 10)  # -10 ~ 10 범위로 제한
+        cU[-1] += 1  # 기존 cU[-1]에 에러 추가
 
     ## 여기서 cresi가 첫 이터레이션때는 1이 나와야 됨
     cresi.append(lwe.Mod(qH @ cX0 + qJ @ cY[-1], env.q))  # encrypted controller output  

@@ -118,7 +118,7 @@ for i in range(iter):
     
     # 외부 impulse 어택을 400 이터레이션 때
     disturbance = 0
-    if i > 2000 and i <2100:
+    if i > 2000 and i <2300:
         if i % 2 == 1:
             disturbance = 10
         else:
