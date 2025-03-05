@@ -118,10 +118,12 @@ for i in range(iter):
     
     # 외부 impulse 어택을 400 이터레이션 때
     disturbance = 0
-    if i > 2000 and i <2300:
-        if i % 2 == 1:
+    if i > 3000 and i <3800:
+        if i % 3 == 1:
             disturbance = 10
-        else:
+        elif i % 3 == 2:
+            disturbance = 0
+        else: 
             disturbance = -10
             
 
@@ -130,7 +132,7 @@ for i in range(iter):
     '''############# original 컨트롤러 ############## '''
 
     y_.append(C @ x_p[-1])
-    u_.append(P_ @ x_c[-1] + disturbance)
+    u_.append(P_ @ x_c[-1])
     r_.append(H_ @ x_c[-1] + J_ @ y_[-1])
     x_p.append(A @ x_p[-1] + B @ u_[-1])
     x_c.append(F_ @ x_c[-1] + G_ @ y_[-1] + R_ @ r_[-1])
@@ -155,7 +157,13 @@ for i in range(iter):
     print("Y", Y[-1][0])
     # print("cY", cY[-1])
     # controller
+    
     cU.append(lwe.Mod(qP @ cX0, env.q))
+    cU[-1][0][0] += disturbance  
+    # print("cU",cU[-1])   # 첫 번째 요소에만 disturbance 더하기
+    # print("cU[-1][0][0]",cU[-1][0][0])
+    # 첫 번째 값에만 disturbance를 더하기
+  
 
     ## 여기서 cresi가 첫 이터레이션때는 1이 나와야 됨
     cresi.append(lwe.Mod(qH @ cX0 + qJ @ cY[-1], env.q))  # encrypted controller output  
@@ -166,8 +174,8 @@ for i in range(iter):
 
     # actuator
     qU.append(lwe.Dec_res(cU[-1], sk, env))
-    U.append(qU[-1] * r * s * s + disturbance)  
-
+    U.append(qU[-1] * r * s * s)  
+    print("U",U[-1])
     ###############################################
     #################### Cotroller ################
     ###############################################

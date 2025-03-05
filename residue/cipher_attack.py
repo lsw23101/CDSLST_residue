@@ -89,7 +89,7 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 1003
+iter = 1000
 execution_times = []  # 실행 시간을 저장할 리스트
 
 # 초기값
@@ -172,6 +172,7 @@ for i in range(iter):
     # actuator
     qU.append(lwe.Dec_res(cU[-1], sk, env))
     U.append(qU[-1] * r * s * s + disturbance)  
+    print("U",U[-1])
 
     ###############################################
     #################### Cotroller ################
@@ -187,8 +188,8 @@ for i in range(iter):
     residue_array[0, 0] = int(round(cresi[-1][0, 0] *s*s))  # 첫 번째 행 첫 번째 열
     residue_array[1, 0] = int(round(cresi[-1][1, 0] *s*s))  # 두 번째 행 첫 번째 열
 
-    print(residue_array[0, 0])
-    print(residue_array[1, 0])
+    # print(residue_array[0, 0])
+    # print(residue_array[1, 0])
     # 여기서 만든 residue array가 Xc 업데이트에 쓰일 예정
 
     # 2x1 배열만 추가 (첫 번째 열)
@@ -267,10 +268,10 @@ plt.legend()
 # 4. Residue Disclosure
 plt.subplot(2, 2, 4)
 
-# plt.plot(time, resi[0,:], label='Residue (Row 1)', color='m', linestyle='--')
-# plt.plot(time, resi[1,:], label='Residue (Row 2)', color='y', linestyle='-')
-plt.plot(time, np.clip(resi[0,:], -5, 5), label='Residue (Row 1)', color='m', linestyle='--')
-plt.plot(time, np.clip(resi[1,:], -5, 5), label='Residue (Row 2)', color='y', linestyle='-')
+plt.plot(time, resi[0,:], label='Residue (Row 1)', color='m', linestyle='--')
+plt.plot(time, resi[1,:], label='Residue (Row 2)', color='y', linestyle='-')
+# plt.plot(time, np.clip(resi[0,:], -5, 5), label='Residue (Row 1)', color='m', linestyle='--')
+# plt.plot(time, np.clip(resi[1,:], -5, 5), label='Residue (Row 2)', color='y', linestyle='-')
 plt.title('Residue Disclosure')
 plt.legend()
 
