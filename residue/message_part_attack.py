@@ -159,7 +159,7 @@ for i in range(iter):
     # controller
     
     cU.append(lwe.Mod(qP @ cX0, env.q))
-    cU[-1][0][0] += disturbance  
+    cU[-1][0][0] += disturbance*10**15
     # print("cU",cU[-1])   # 첫 번째 요소에만 disturbance 더하기
     # print("cU[-1][0][0]",cU[-1][0][0])
     # 첫 번째 값에만 disturbance를 더하기
@@ -247,8 +247,9 @@ plt.figure(figsize=(12, 10))
 
 # 1. Original input (u_) vs Encrypted input (U)
 plt.subplot(2, 2, 1)
-plt.plot(time, u_, label='Original u', linestyle='--', color='b')
 plt.plot(time, U, label='Encrypted U', linestyle='-', color='r')
+plt.plot(time, u_, label='Original u', linestyle='--', color='b')
+
 plt.title('Input Comparison (Original vs. Encrypted)')
 plt.legend()
 
