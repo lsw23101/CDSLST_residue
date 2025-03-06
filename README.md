@@ -1,13 +1,14 @@
 <<<<<<< HEAD
 # CDSLST_residue
-2월까지 시뮬레이션...
+3월까지 시뮬레이션 끝내고 글 작성하기
 
 # To Do:
 
-현재 siso로 구현했을때에는 quantization 파라미터가 너무 작게 나옴
-그에 따라 q size도 크게 나옴
+레퍼런스를 넣어서
+이 때는 y값이 변화가 생기지만
+레지듀 값은 변화가 안생기는 것과
 
-multi output system 상황으로 확장시켜서...
+attack이 들어오며는 y랑 레퍼런스가 둘다 변하는 모습 시뮬레이션..?
 
 =======
 # MIMO Cartpole residue simulation
