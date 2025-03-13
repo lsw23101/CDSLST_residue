@@ -64,7 +64,7 @@ def Enc_res(m, sk, Bx, M, env):
 
     e = np.random.normal(0, env.r, size=(n, 1)).astype(int)  # 가우시안 분포에서 오류 샘플링
 
-    m = np.round(m).astype(object)  # 메시지가 float일 경우 반올림 처리
+    # m = np.round(m).astype(object)  # 메시지가 float일 경우 반올림 처리
     
     mask = M @ Bx
 
@@ -81,11 +81,9 @@ def Dec_res(c, sk, env):
     decrypted = Mod(c @ s, env.q)  # 암호문 연산 후 모듈러 연산 추가
 
     # Decimal 사용하여 안전한 나눗셈 수행
-    decrypt_decimal = np.vectorize(lambda x: int(x) // env.L)(decrypted)
+    decrypt_decimal = (decrypted // env.L).astype(object)  # object 타입으로 나눔
     
     # 소수점 반올림 후 정수 변환
     plaintext = np.array([round(d) for d in decrypt_decimal.flatten()], dtype=object)
 
     return plaintext.reshape(decrypted.shape)  # 원래 모양 유지
-
-

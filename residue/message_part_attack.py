@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import utils.encryption_res as lwe
 import time
+import random
+from decimal import Decimal
 
 np.seterr(over='raise', invalid='raise')  # 오버플로우 및 NaN 발생 시 에러 발생
 
@@ -32,18 +34,18 @@ F_ = np.array([[0, 0, 1, 0],
                [0, 0, 0, 0],
                [0, 0, 0, 0]])  
 
-G_ = np.array([[2.000080188918234,  -0.001651538104192], 
-               [0.000200427012610,   1.997505091139706], 
-               [-1.017587878969169,   0.034840555021392],
-                [-0.043960720399405,  -0.912508187845338]])  
+G_ = np.array([[2.000864078221596,  -0.003295278449081], 
+               [0.002159736373896,   1.993396586631668], 
+               [-1.073304943109695,   0.064626004245055],
+                [-0.183224942222347,  -0.838059767567518]])  
 
-R_ = np.array([[-1.385053666059764,   0.023478810983923],
-                [-0.029666346901495,  -1.306187359453585],
-                [0.385319459150226,  -0.010982835361269], 
-                [0.016718748685899,   0.347376172809300]])  
+R_ = np.array([[-1.076793211529422,   0.070218366022731],
+                [-0.189486727679320,  -0.818636719504386],
+                [0.008815492549296,   0.003918471706266], 
+                [-0.002256783169449,   0.019433558640749]])  
 
-H_ = np.array([[-1.016472301380767,   0.034118420398921,   0,   0],
-               [-0.041189163633078,  -0.915094903590375,  0,   0]])  
+H_ = np.array([[-1.067753856639265,   0.062151826125165,   0,   0],
+               [-0.169419234348467,  -0.844997076397941,  0,   0]])  
 
 J_ = np.array([[1, 0],
                [0, 1]]).astype(int)
@@ -151,7 +153,7 @@ for i in range(iter):
     # sensor
 
     Y.append(C @ Xp[-1])  # Y에 스칼라 값 저장
-    qY.append(np.vectorize(lambda x: int(round(x)))(Y[-1] / r)) 
+    qY.append(np.vectorize(lambda x: int(round(Decimal(x))), otypes=[object])(Y[-1] / r))
     cY.append(lwe.Enc_res(qY[-1], sk, Bx, M,env))
 
     print("Y", Y[-1][0])
@@ -174,7 +176,8 @@ for i in range(iter):
 
     # actuator
     qU.append(lwe.Dec_res(cU[-1], sk, env))
-    U.append(qU[-1] * r * s * s)  
+    # U.append(qU[-1] * r * s * s)  
+    U.append(qU[-1] * r * s * s + random.uniform(-0.1, 0.1))
     print("U",U[-1])
     ###############################################
     #################### Cotroller ################
@@ -273,8 +276,8 @@ plt.subplot(2, 2, 4)
 
 # plt.plot(time, resi[0,:], label='Residue (Row 1)', color='m', linestyle='--')
 # plt.plot(time, resi[1,:], label='Residue (Row 2)', color='y', linestyle='-')
-plt.plot(time, np.clip(resi[0,:], -5, 5), label='Residue (Row 1)', color='m', linestyle='--')
-plt.plot(time, np.clip(resi[1,:], -5, 5), label='Residue (Row 2)', color='y', linestyle='-')
+plt.plot(time, np.clip(resi[0,:], -5, 10), label='Residue (Row 1)', color='m', linestyle='--')
+plt.plot(time, np.clip(resi[1,:], -5, 10), label='Residue (Row 2)', color='y', linestyle='-')
 plt.title('Residue Disclosure')
 plt.legend()
 
