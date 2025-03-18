@@ -4,6 +4,7 @@ import utils.encryption_res as lwe
 import time
 import random
 from decimal import Decimal
+from sympy import mod_inverse
 
 np.seterr(over='raise', invalid='raise')  # 오버플로우 및 NaN 발생 시 에러 발생
 
@@ -54,18 +55,29 @@ J_ = np.array([[1, 0],
 # Quantization parameters
 r = 0.0001
 s = 0.0001
+scaled_value = int(1 / s**2)
 
 qG = np.round(G_ / s).astype(int)
 qH = np.round(H_/ s).astype(int)
 qP = np.round(P_ / s).astype(int)
-qJ = np.round(J_ / s**2).astype(int)
+qJ = np.round(J_ * scaled_value).astype(int)
 qR = np.round(R_ / s).astype(int)
 
 
 
 
 ############ Equivalent input with XC = [0 0 0.001 0]  ##########
-J_inv = (2342055259102470954 * J_).astype(object) # GPT로 구한 2^64-59에서의 10^6의 inverse....
+## 
+
+# To avoid small floating-point issues, let's scale 1/s^2 to an integer
+
+
+# Now, compute the modular inverse of the scaled value
+inverse = mod_inverse(scaled_value, env.q)
+
+print("inverse:", inverse)
+
+J_inv = (inverse * J_).astype(object) # GPT로 구한 2^64-59에서의 10^6의 inverse....
 # J_inv = np.array([[2342055259102470954, 0],
 #                 [0, 2342055259102470954]]).astype(int)
 
@@ -80,7 +92,7 @@ W = np.vectorize(lambda x: int(lwe.Mod(x, env.q)))(F_ - qG @ J_inv @ qH)
 
 print("M", M)
 print("W", W)
-print("inverse check", lwe.Mod(2342055259102470954*100000000, env.q))
+print("inverse check", lwe.Mod(inverse*scaled_value, env.q))
 
 
 print("qP:", qP)
