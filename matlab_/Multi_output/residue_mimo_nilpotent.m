@@ -91,13 +91,13 @@ R = inv(T) * F_can(:, 1:2) /  H_can(:, 1:2);
 
 
 %% Further meothod로 바꾼 
-F_ = T*(F-R*H)/T;
-R_ = T*R;
-G_ = T*(G-R*J);
-H_ = H/T;
+F_ = T*(F-R*H)/T
+R_ = T*R
+G_ = T*(G-R*J)
+H_ = H/T
 
-J_ = J;
-P_ = P/T;
+J_ = J
+P_ = P/T
 
 %% F의 eig value를 모두 0으로 만드니까 제어 성능이 떨어짐 !! >> T의 scale 조절로 해결..
 
