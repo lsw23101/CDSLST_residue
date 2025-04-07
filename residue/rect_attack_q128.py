@@ -1,18 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import utils.encryption_res as lwe
+import utils.encryption_res_qsize128 as lwe
 import time
 import random
 from decimal import Decimal
 from sympy import mod_inverse
 from sympy import isprime
+
+
 np.seterr(over='raise', invalid='raise')  # 오버플로우 및 NaN 발생 시 에러 발생
 
 # 파라미터 생성 // q L e 
 Ts = 0.01
 env = lwe.params()  # 환경 설정
 sk = lwe.Seret_key(env)
+
 print(isprime(env.q))
+
 
 ############ Plant Model #################
 A = np.array([[1.000000000000000,   0.009990914092165,   0.000133590122189,   0.000000445321570],
@@ -49,15 +53,19 @@ H_ = np.array([[-1.067753856639265,   0.062151826125165,   0,   0],
 J_ = np.array([[1, 0],
                [0, 1]]).astype(int)
 
-# L*r*s*s ~ 2^43 정도
+# L*r*s*s ~ 2^48 정도
+# 40배 정도 더 늘어난거니까
 
 # Quantization parameters
-r = 0.0001
-s = 0.0001
+r = 0.00001
+s = 0.00005
 scaled_value = int(1 / s**2)
+
 
 qG = np.round(G_ / s).astype(int)
 qH = np.round(H_/ s).astype(int)
+
+
 qP = np.round(P_ / s).astype(int)
 qJ = np.round(J_ * scaled_value).astype(int)
 qR = np.round(R_ / s).astype(int)
@@ -80,7 +88,6 @@ J_inv = (inverse * J_).astype(object) # GPT로 구한 2^64-59에서의 10^6의 i
 # J_inv = np.array([[2342055259102470954, 0],
 #                 [0, 2342055259102470954]]).astype(int)
 
-print(2342055259102470954*100000000)
 print("J_inv @ qJ ", J_inv @ qJ)
 
 
@@ -104,12 +111,12 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 3000
+iter = 5000
 execution_times = []  # 실행 시간을 저장할 리스트
 
 # 초기값
 
-xp0 = np.array([[0], [0], [0.1], [0.1]])
+xp0 = np.array([[1], [0], [0.1], [0.1]])
 xc0 = np.array([[0], [0], [0], [0]])
 # Initialize variables with proper int conversion at the beginning
 
@@ -136,7 +143,7 @@ for i in range(iter):
     
     # 외부 impulse 어택을 400 이터레이션 때
     disturbance = 0
-    if i > 1500 and i <2300:
+    if i > 3000 and i <3800:
         disturbance = 2
 
     disturbance_values.append(disturbance)  # disturbance 저장
@@ -172,7 +179,6 @@ for i in range(iter):
     
     cU.append(lwe.Mod(qP @ cX0, env.q))
     cU[-1][0][0] += disturbance * int(env.L / (r*s*s))
-    # cU[-1][0][0] += disturbance * 10**15
     # print("cU",cU[-1])   # 첫 번째 요소에만 disturbance 더하기
     # print("cU[-1][0][0]",cU[-1][0][0])
     # 첫 번째 값에만 disturbance를 더하기
@@ -188,7 +194,6 @@ for i in range(iter):
     # actuator
     qU.append(lwe.Dec_res(cU[-1], sk, env))
     U.append(qU[-1] * r * s * s)  
-    
     # U.append(qU[-1] * r * s * s + random.uniform(-0.1, 0.1))
 
     ###############################################
@@ -210,7 +215,7 @@ for i in range(iter):
     # 여기서 만든 residue array가 Xc 업데이트에 쓰일 예정
 
     # 2x1 배열만 추가 (첫 번째 열)
-    resi.append((r/env.L)*residue_array[:, 0].reshape(2, 1))  # 2x1 배열로 추가
+    resi.append((r/env.L) * residue_array[:, 0].reshape(2, 1))  # 2x1 배열로 추가
     
     #################################################################
     ######################### state update  #########################
@@ -270,35 +275,46 @@ time = Ts * np.arange(iter)
 
 plt.figure(figsize=(12, 10))
 
-# Figure 설정: 가로로 길게 (1열 4행)
-fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(10, 16))
-
 # 1. Original input (u_) vs Encrypted input (U)
-axes[0].plot(time, U, label='Encrypted U', linestyle='-', color='r')
-axes[0].plot(time, u_, label='Original u', linestyle='--', color='b')
-axes[0].plot(time, disturbance_values, label='Attack', linestyle=':', color='k')  # Disturbance 추가
-axes[0].set_title('Input Comparison (Original vs. Encrypted)')
-axes[0].legend()
+plt.subplot(2, 2, 1)
+plt.plot(time, U, label='Encrypted U', linestyle='-', color='r')
+plt.plot(time, u_, label='Original u', linestyle='--', color='b')
+
+
+# Disturbance 추가 (사각파 형태)
+# Disturbance 값을 강조해서 표시
+plt.plot(time, disturbance_values, label='Attack', linestyle=':', color='k')
+
+
+plt.title('Input Comparison (Original vs. Encrypted)')
+plt.legend()
 
 # 2. Original output (y_) vs Encrypted output (Y)
-axes[1].plot(time, y_[0, :], label='Original y (Row 1)', linestyle='--', color='b')
-axes[1].plot(time, y_[1, :], label='Original y (Row 2)', linestyle='--', color='c')
-axes[1].plot(time, Y[0, :], label='Encrypted Y (Row 1)', linestyle='-', color='r')
-axes[1].plot(time, Y[1, :], label='Encrypted Y (Row 2)', linestyle='-', color='m')
-axes[1].set_title('Output Comparison (Original vs. Encrypted)')
-axes[1].legend()
+plt.subplot(2, 2, 2)
+plt.plot(time, y_[0, :], label='Original y (Row 1)', linestyle='--', color='b')
+plt.plot(time, y_[1, :], label='Original y (Row 2)', linestyle='--', color='c')
+plt.plot(time, Y[0, :], label='Encrypted Y (Row 1)', linestyle='-', color='r')
+plt.plot(time, Y[1, :], label='Encrypted Y (Row 2)', linestyle='-', color='m')
+plt.title('Output Comparison (Original vs. Encrypted)')
+plt.legend()
 
 # 3. Difference between u_ and U
-axes[2].plot(time, np.clip(diff_u, -0.2, 0.2), label='Difference (u_ - U)', color='g')
-axes[2].set_title('Difference between u_ and U')
-axes[2].legend()
+plt.subplot(2, 2, 3)
+plt.plot(time, np.clip(diff_u, -0.5, 0.5), label='Difference (u_ - U)', color='g')
+plt.title('Difference between u_ and U')
+plt.legend()
 
 # 4. Residue Disclosure
-axes[3].plot(time, resi[0, :], label='Residue (Row 1)', color='m', linestyle='--')
-axes[3].plot(time, resi[1, :], label='Residue (Row 2)', color='y', linestyle='-')
-axes[3].set_title('Residue Disclosure')
-axes[3].legend()
+plt.subplot(2, 2, 4)
 
-# Layout 조정 및 플롯 표시
+plt.plot(time, resi[0,:], label='Residue (Row 1)', color='m', linestyle='--')
+plt.plot(time, resi[1,:], label='Residue (Row 2)', color='y', linestyle='-')
+# plt.plot(time, np.clip(resi[0,:], -5, 10), label='Residue (Row 1)', color='m', linestyle='--')
+# plt.plot(time, np.clip(resi[1,:], -5, 10), label='Residue (Row 2)', color='y', linestyle='-')
+plt.title('Residue Disclosure')
+plt.legend()
+
 plt.tight_layout()
 plt.show()
+
+

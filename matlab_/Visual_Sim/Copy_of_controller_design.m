@@ -34,21 +34,23 @@ A = sysD.A;
 B = sysD.B;
 
 % dimensions
-[nx,nu] = size(B);
-[ny,~] = size(C);
-
+[n,m] = size(B);
+[l,~] = size(C);
 
 % controller design
-Q = C'*C;
-Q(1,1) = 1000;
-Q(3,3) = 10000;
+Q2 = 100*eye(n);
 
-R1 = eye(nu);
-R2 = eye(ny);
-[~, K, ~] = idare(A,B,1*Q,10*R1,[],[]);
+Q1 = [100 0 0 0; 
+     0 1 0 0;
+     0 0 100 0;
+     0 0 0 1];
 
-[~, L, ~] = idare(A.', C.', 4*Q, R2, [], []);
+R1 = 1 * eye(m);
+R2 = 1 * eye(l);
+[~, K, ~] = idare(A,B,Q1,R1,[],[]);
+[~, L, ~] = idare(A.', C.', Q2, R2, [], []);
 L = L.';
+
 
 % (F,G,H): resulting controller
 F = A - B*K - L*C;
