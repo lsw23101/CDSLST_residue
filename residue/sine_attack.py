@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import utils.encryption_res as lwe
+import residue.utils.encryption_res_qsize64 as lwe
 import time
 import random
 from decimal import Decimal

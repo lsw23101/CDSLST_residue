@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import utils.encryption_res as lwe
+import residue.utils.encryption_res_qsize64 as lwe
 import time
 
 np.seterr(over='raise', invalid='raise')  # 오버플로우 및 NaN 발생 시 에러 발생

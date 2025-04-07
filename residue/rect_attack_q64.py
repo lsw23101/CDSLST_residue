@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import utils.encryption_res as lwe
+import utils.encryption_res_qsize64 as lwe
 import time
 import random
 from decimal import Decimal
@@ -9,7 +9,7 @@ from sympy import isprime
 np.seterr(over='raise', invalid='raise')  # 오버플로우 및 NaN 발생 시 에러 발생
 
 # 파라미터 생성 // q L e 
-Ts = 0.01
+Ts = 0.05 # 루프타임이 28ms 니까 50ms 샘플링타임으로 설정
 env = lwe.params()  # 환경 설정
 sk = lwe.Seret_key(env)
 print(isprime(env.q))
@@ -104,7 +104,7 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 3000
+iter = 2000
 execution_times = []  # 실행 시간을 저장할 리스트
 
 # 초기값
@@ -136,7 +136,7 @@ for i in range(iter):
     
     # 외부 impulse 어택을 400 이터레이션 때
     disturbance = 0
-    if i > 1500 and i <2300:
+    if i > 1900 and i <2000:
         disturbance = 2
 
     disturbance_values.append(disturbance)  # disturbance 저장
