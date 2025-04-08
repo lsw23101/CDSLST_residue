@@ -30,7 +30,7 @@ D = [0];
 
 
 % sampling time
-Ts = 0.01;
+Ts = 0.1;
 
 % discretize
 sysC = ss(A0,B0,C,[]);
@@ -47,16 +47,16 @@ B = sysD.B;
 % controller design
 Q2 = 100*eye(n);
 
-Q1 = [100 0 0 0; 
+Q1 = [1000 0 0 0; 
      0 1 0 0;
-     0 0 100 0;
+     0 0 1000 0;
      0 0 0 1];
 
 R1 = 1 * eye(m);
 R2 = 1 * eye(l);
-[~, K, ~] = idare(A,B,Q1,R1,[],[]);
+[~, K, ~] = idare(A,B,Q2,R1,[],[]);
 K = -K;
-[~, L, ~] = idare(A.', C.', Q2, R2, [], []);
+[~, L, ~] = idare(A.', C.', 2*Q2, R2, [], []);
 L = L.';
 
 % 부호 주의
@@ -91,13 +91,13 @@ R = inv(T) * F_can(:, 1:2) /  H_can(:, 1:2);
 
 
 %% Further meothod로 바꾼 
-F_ = T*(F-R*H)/T
-R_ = T*R
-G_ = T*(G-R*J)
-H_ = H/T
+F_ = T*(F-R*H)/T;
+R_ = T*R;
+G_ = T*(G-R*J);
+H_ = H/T;
 
-J_ = J
-P_ = P/T
+J_ = J;
+P_ = P/T;
 
 %% F의 eig value를 모두 0으로 만드니까 제어 성능이 떨어짐 !! >> T의 scale 조절로 해결..
 
@@ -107,8 +107,8 @@ P_ = P/T
 % 이제는 H_가 정수가 아니다..
 
 % quantization parameters
-r = 0.0001;
-s = 0.0001; % 10^-6까지 가야함...
+r = 0.00001;
+s = 0.00005; 
  
 % quantization of control parameters
 qG = round(G_/s);
@@ -119,8 +119,8 @@ qR = round(R_/s);
 
 
 %% Simulation
-iter = 5000;
-xp0 = [0; 0; 0.01; 0];
+iter = 200;
+xp0 = [0; 0; 0.1; 0.1];
 xc0 = [0; 0; 0; 0];
 
 % variables for simulation with original controller
@@ -239,3 +239,92 @@ ylabel('System Output');
 ylim([-0.05, 0.05]); % 필요에 따라 조정
 
 sgtitle('Comparison of Original vs. Quantized System', 'FontSize', 16); % 전체 제목 추가
+
+
+fprintf('A = np.array([');
+for i = 1:size(A, 1)
+    fprintf('[');
+    fprintf('%.15f, ', A(i, 1:end-1));
+    fprintf('%.15f]', A(i, end));
+    if i ~= size(A,1)
+        fprintf(', \n          ');
+    end
+end
+fprintf('])\n');
+
+fprintf('\n');
+
+
+
+fprintf('B = np.array([');
+for i = 1:size(B, 1)
+    fprintf('[');
+    for j = 1:size(B, 2)
+        if j == size(B, 2)
+            fprintf('%.15f', B(i, j));
+        else
+            fprintf('%.15f, ', B(i, j));
+        end
+    end
+    fprintf(']');
+    if i ~= size(B,1)
+        fprintf(', \n          ');
+    end
+end
+fprintf('])\n\n');
+fprintf('\n');
+
+
+
+
+
+
+fprintf('R_ = np.array([');
+for i = 1:size(R_, 1)
+    fprintf('[');
+    fprintf('%.15f, ', R_(i, 1:end-1));
+    fprintf('%.15f]', R_(i, end));
+    if i ~= size(R_,1)
+        fprintf(', \n          ');
+    end
+end
+fprintf('])\n');
+
+fprintf('\n');
+
+fprintf('G_ = np.array([');
+for i = 1:size(G_, 1)
+    fprintf('[');
+    fprintf('%.15f, ', G_(i, 1:end-1));
+    fprintf('%.15f]', G_(i, end));
+    if i ~= size(G_,1)
+        fprintf(', \n          ');
+    end
+end
+fprintf('])\n');
+fprintf('\n');
+
+
+fprintf('H_ = np.array([');
+for i = 1:size(H_, 1)
+    fprintf('[');
+    fprintf('%.15f, ', H_(i, 1:end-1));
+    fprintf('%.15f]', H_(i, end));
+    if i ~= size(H_,1)
+        fprintf(', \n          ');
+    end
+end
+fprintf('])\n');
+fprintf('\n');
+
+
+fprintf('P_ = np.array([');
+for i = 1:size(P_, 1)
+    fprintf('[');
+    fprintf('%.15f, ', P_(i, 1:end-1));
+    fprintf('%.15f]', P_(i, end));
+    if i ~= size(P_,1)
+        fprintf(', \n          ');
+    end
+end
+fprintf('])\n');

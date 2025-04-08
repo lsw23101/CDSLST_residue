@@ -18,40 +18,62 @@ sk = lwe.Seret_key(env)
 print(isprime(env.q))
 
 
-############ Plant Model #################
-A = np.array([[1.000000000000000,   0.009990914092165,   0.000133590122189,   0.000000445321570],
-              [0,   0.998183267746166,   0.026716874509824,   0.000133590122189],
-              [0,  -0.000022719408536,   1.001559293628154,   0.010005197273892],
-              [0,  -0.004543686141126,   0.311919519484923,   1.001559293628154]])  
+############ Discretized Plant Model with 100ms #################
+# A = np.array([[1.000000000000000,   0.009990914092165,   0.000133590122189,   0.000000445321570],
+#               [0,   0.998183267746166,   0.026716874509824,   0.000133590122189],
+#               [0,  -0.000022719408536,   1.001559293628154,   0.010005197273892],
+#               [0,  -0.004543686141126,   0.311919519484923,   1.001559293628154]])  
 
-B = np.array([[0.000090859078355], [0.018167322538343], [0.000227194085355], [0.045436861411265]])  
+# B = np.array([[0.000090859078355], [0.018167322538343], [0.000227194085355], [0.045436861411265]])  
 
 C = np.array([[1, 0, 0, 0],
               [0, 0, 1, 0]])
 
 ############ Controller Model with Re-Enc #################
-P_ = np.array([[629.7476737261301,  -597.7784667557789,   755.7026624769707,  -684.5365307291548]])  
 
 F_ = np.array([[0, 0, 1, 0],
                [0, 0, 0, 1],
                [0, 0, 0, 0],
                [0, 0, 0, 0]])  
 
-G_ = np.array([[2.000864078221596,  -0.003295278449081], 
-               [0.002159736373896,   1.993396586631668], 
-               [-1.073304943109695,   0.064626004245055],
-                [-0.183224942222347,  -0.838059767567518]])  
-
-R_ = np.array([[-1.076793211529422,   0.070218366022731],
-                [-0.189486727679320,  -0.818636719504386],
-                [0.008815492549296,   0.003918471706266], 
-                [-0.002256783169449,   0.019433558640749]])  
-
-H_ = np.array([[-1.067753856639265,   0.062151826125165,   0,   0],
-               [-0.169419234348467,  -0.844997076397941,  0,   0]])  
 
 J_ = np.array([[1, 0],
                [0, 1]]).astype(int)
+
+
+'''
+매트랩 복붙
+'''
+
+
+A = np.array([[1.000000000000000, 0.099091315838924, 0.013632351698217, 0.000450408274543], 
+          [0.000000000000000, 0.981778666086312, 0.278888611257509, 0.013632351698217], 
+          [0.000000000000000, -0.002318427159561, 1.159794783603433, 0.105273449905749], 
+          [0.000000000000000, -0.047430035928148, 3.276421050834629, 1.159794783603433]])
+
+B = np.array([[0.009086841610758], 
+          [0.182213339136875], 
+          [0.023184271595607], 
+          [0.474300359281477]])
+
+
+R_ = np.array([[-0.158717825831511, 0.168218536215741], 
+          [-0.162175411950193, 0.333399971252324], 
+          [-0.007573452606575, 0.076446003699856], 
+          [-0.019672108903376, 0.187645926159056]])
+
+G_ = np.array([[0.203157831946646, -0.031566146482456], 
+          [0.007723874130122, 0.138764067572083], 
+          [-0.154623874970329, 0.058527812034872], 
+          [-0.133834642969481, 0.047360629819598]])
+
+H_ = np.array([[-12.118455534346356, 3.466860377603570, -0.000000000000002, -0.000000000000002], 
+          [-5.405051675309685, -1.567040096671678, -0.000000000000001, -0.000000000000001]])
+
+P_ = np.array([[-167.022116552110845, 57.580185408028491, 243.134418436244800, -386.482053445286169]])
+
+
+
 
 # L*r*s*s ~ 2^48 정도
 # 40배 정도 더 늘어난거니까
@@ -111,7 +133,7 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 2000
+iter = 500
 execution_times = []  # 실행 시간을 저장할 리스트
 
 # 초기값
@@ -143,7 +165,7 @@ for i in range(iter):
     
     # 외부 impulse 어택을 400 이터레이션 때
     disturbance = 0
-    if i > 1900 and i <2000:
+    if i > 400 and i <500:
         disturbance = 2
 
     disturbance_values.append(disturbance)  # disturbance 저장
@@ -273,48 +295,35 @@ diff_Xc = np.hstack(diff_Xc).flatten()
 resi = np.hstack(resi)
 time = Ts * np.arange(iter)
 
-plt.figure(figsize=(12, 10))
+# Figure 설정: 가로로 길게 (1열 4행)
+fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(10, 12))
 
 # 1. Original input (u_) vs Encrypted input (U)
-plt.subplot(2, 2, 1)
-plt.plot(time, U, label='Encrypted U', linestyle='-', color='r')
-plt.plot(time, u_, label='Original u', linestyle='--', color='b')
-
-
-# Disturbance 추가 (사각파 형태)
-# Disturbance 값을 강조해서 표시
-plt.plot(time, disturbance_values, label='Attack', linestyle=':', color='k')
-
-
-plt.title('Input Comparison (Original vs. Encrypted)')
-plt.legend()
+axes[0].plot(time, U, label='Encrypted U', linestyle='-', color='r')
+axes[0].plot(time, u_, label='Original u', linestyle='--', color='b')
+axes[0].plot(time, disturbance_values, label='Attack', linestyle=':', color='k')  # Disturbance 추가
+axes[0].set_title('Input Comparison (Original vs. Encrypted)')
+axes[0].legend()
 
 # 2. Original output (y_) vs Encrypted output (Y)
-plt.subplot(2, 2, 2)
-plt.plot(time, y_[0, :], label='Original y (Row 1)', linestyle='--', color='b')
-plt.plot(time, y_[1, :], label='Original y (Row 2)', linestyle='--', color='c')
-plt.plot(time, Y[0, :], label='Encrypted Y (Row 1)', linestyle='-', color='r')
-plt.plot(time, Y[1, :], label='Encrypted Y (Row 2)', linestyle='-', color='m')
-plt.title('Output Comparison (Original vs. Encrypted)')
-plt.legend()
+axes[1].plot(time, y_[0, :], label='Original y (Row 1)', linestyle='--', color='b')
+axes[1].plot(time, y_[1, :], label='Original y (Row 2)', linestyle='--', color='c')
+axes[1].plot(time, Y[0, :], label='Encrypted Y (Row 1)', linestyle='-', color='r')
+axes[1].plot(time, Y[1, :], label='Encrypted Y (Row 2)', linestyle='-', color='m')
+axes[1].set_title('Output Comparison (Original vs. Encrypted)')
+axes[1].legend()
 
 # 3. Difference between u_ and U
-plt.subplot(2, 2, 3)
-plt.plot(time, np.clip(diff_u, -0.5, 0.5), label='Difference (u_ - U)', color='g')
-plt.title('Difference between u_ and U')
-plt.legend()
+axes[2].plot(time, np.clip(diff_u, -0.001, 0.001), label='Difference (u_ - U)', color='g')
+axes[2].set_title('Difference between u_ and U')
+axes[2].legend()
 
 # 4. Residue Disclosure
-plt.subplot(2, 2, 4)
+axes[3].plot(time, resi[0, :], label='Residue (Row 1)', color='m', linestyle='--')
+axes[3].plot(time, resi[1, :], label='Residue (Row 2)', color='y', linestyle='-')
+axes[3].set_title('Residue Disclosure')
+axes[3].legend()
 
-plt.plot(time, resi[0,:], label='Residue (Row 1)', color='m', linestyle='--')
-plt.plot(time, resi[1,:], label='Residue (Row 2)', color='y', linestyle='-')
-# plt.plot(time, np.clip(resi[0,:], -5, 10), label='Residue (Row 1)', color='m', linestyle='--')
-# plt.plot(time, np.clip(resi[1,:], -5, 10), label='Residue (Row 2)', color='y', linestyle='-')
-plt.title('Residue Disclosure')
-plt.legend()
-
+# Layout 조정 및 플롯 표시
 plt.tight_layout()
 plt.show()
-
-
