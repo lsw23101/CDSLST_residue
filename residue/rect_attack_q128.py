@@ -313,11 +313,18 @@ axes[1].plot(time, Y[1, :], label='Encrypted Y (Row 2)', linestyle='-', color='m
 axes[1].set_title('Output Comparison (Original vs. Encrypted)')
 axes[1].legend()
 
-# 3. Difference between u_ and U
-axes[2].plot(time, np.clip(diff_u, -0.001, 0.001), label='Difference (u_ - U)', color='g')
-axes[2].set_title('Difference between u_ and U')
-axes[2].legend()
+# 기존 코드
+# axes[2].plot(time, np.clip(diff_u, -0.01, 0.01), label='Difference (u_ - U)', color='g')
+# axes[2].set_title('Difference between u_ and U')
+# axes[2].legend()
 
+# 새로운 코드
+diff_u_plot = diff_u.copy()
+diff_u_plot[400:] = 0  # 400번째 이후는 0으로 세팅
+
+axes[2].plot(time, diff_u_plot, label='Difference (u_ - U)', color='g')
+axes[2].set_title('Difference between u_ and U (zeroed after iteration 400)')
+axes[2].legend()
 # 4. Residue Disclosure
 axes[3].plot(time, resi[0, :], label='Residue (Row 1)', color='m', linestyle='--')
 axes[3].plot(time, resi[1, :], label='Residue (Row 2)', color='y', linestyle='-')

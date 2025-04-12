@@ -132,7 +132,7 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 500
+iter = 240
 execution_times = []  # 실행 시간을 저장할 리스트
 
 # 초기값
@@ -164,7 +164,7 @@ for i in range(iter):
     
     # 외부 impulse 어택을 400 이터레이션 때
     disturbance = 0
-    if i > 400 and i <500:
+    if i > 200 and i <500:
         disturbance = 2
 
     disturbance_values.append(disturbance)  # disturbance 저장
@@ -296,36 +296,40 @@ diff_Xc = np.hstack(diff_Xc).flatten()
 resi = np.hstack(resi)
 time = Ts * np.arange(iter)
 
-
 # Figure 설정: 가로로 길게 (1열 4행)
-fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(10, 12))
+fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(5, 6))
+# 예: time이 0~10까지 1000포인트라면 xticks를 간격 2로 설정
+xticks = np.arange(0, time[-1] + 1, 2)
 
 # 1. Original input (u_) vs Encrypted input (U)
 axes[0].plot(time, U, label='Encrypted U', linestyle='-', color='r')
 axes[0].plot(time, u_, label='Original u', linestyle='--', color='b')
-axes[0].plot(time, disturbance_values, label='Attack', linestyle=':', color='k')  # Disturbance 추가
-axes[0].set_title('Input Comparison (Original vs. Encrypted)')
+axes[0].plot(time, disturbance_values, label='Attack', linestyle=':', color='k')
+axes[0].set_title('Control Input Comparison', fontsize=14)
+axes[0].set_yticks([2, 0, -2, -4, -6])
+axes[0].tick_params(axis='y', labelsize=12)
 axes[0].legend()
 
-# 2. Original output (y_) vs Encrypted output (Y)
-axes[1].plot(time, y_[0, :], label='Original y (Row 1)', linestyle='--', color='b')
-axes[1].plot(time, y_[1, :], label='Original y (Row 2)', linestyle='--', color='c')
-axes[1].plot(time, Y[0, :], label='Encrypted Y (Row 1)', linestyle='-', color='r')
-axes[1].plot(time, Y[1, :], label='Encrypted Y (Row 2)', linestyle='-', color='m')
-axes[1].set_title('Output Comparison (Original vs. Encrypted)')
+# 2. Difference between u_ and U (절댓값, 클립)
+diff_u_plot = np.abs(diff_u)  # 절댓값으로 변경
+diff_u_plot = np.clip(diff_u_plot, 0, 0.02)  # 0.2로 클립
+
+# 전체 실선 그리기 (400 이후는 어차피 0이라 위 점선보다 늦게 그리면 가려버림)
+axes[1].plot(time, diff_u_plot, label='Difference (u_ - U)', color='g', linestyle='-')
+
+axes[1].set_title('Norm of Difference', fontsize=14)
+axes[1].set_yticks([0, 0.01, 0.02])  # y축 범위를 0, 0.1, 0.2로 설정
+axes[1].tick_params(axis='y', labelsize=12)
 axes[1].legend()
 
-# 3. Difference between u_ and U
-axes[2].plot(time, np.clip(diff_u, -0.01, 0.01), label='Difference (u_ - U)', color='g')
-axes[2].set_title('Difference between u_ and U')
+# 3. Residue Disclosure
+axes[2].plot(time, resi[0, :], label='Residue (Row 1)', color='m', linestyle='--')
+axes[2].plot(time, resi[1, :], label='Residue (Row 2)', color='y', linestyle='-')
+axes[2].set_title('Residue Disclosure', fontsize=14)
+axes[2].set_yticks([0.3, 0.2, 0.1, 0, -0.1])
+axes[2].tick_params(axis='y', labelsize=12)
 axes[2].legend()
 
-# 4. Residue Disclosure
-axes[3].plot(time, resi[0, :], label='Residue (Row 1)', color='m', linestyle='--')
-axes[3].plot(time, resi[1, :], label='Residue (Row 2)', color='y', linestyle='-')
-axes[3].set_title('Residue Disclosure')
-axes[3].legend()
-
 # Layout 조정 및 플롯 표시
-plt.tight_layout()
+plt.tight_layout(rect=[0, 0, 1, 0.97])  # 위쪽 여백 조정
 plt.show()
