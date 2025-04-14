@@ -171,11 +171,11 @@ for r in r_fixed_values:
         print(f"r_scale={r}, s_scale={s} → max_diff_u = {max_diff:.6f}")
 
 # 시각화
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(5, 4))
 for r in r_fixed_values:
-    plt.plot(s_values, line_results[r], marker='o', label=f"r_scale = {r}")
+    plt.plot(s_values, line_results[r], marker='o', markersize=4, linewidth=1.5, label=f"r_scale = {r}")
 
-plt.axhline(0.01, color='gray', linestyle='--', linewidth=1, label='Threshold = 0.01')
+plt.axhline(0.01, color='gray', linestyle='-', linewidth=2, label='Threshold = 0.01')
 
 plt.xscale('log')
 plt.xlabel("s_scale (log scale)")

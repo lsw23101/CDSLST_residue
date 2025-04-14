@@ -10,7 +10,7 @@ from sympy import isprime
 np.seterr(over='raise', invalid='raise')  # 오버플로우 및 NaN 발생 시 에러 발생
 
 # 파라미터 생성 // q L e 
-Ts = 0.1 # 루프타임이 28ms 니까 50ms 샘플링타임으로 설정
+Ts = 0.05 # 루프타임이 28ms 니까 50ms 샘플링타임으로 설정
 env = lwe.params()  # 환경 설정
 sk = lwe.Seret_key(env)
 print(isprime(env.q))
@@ -78,7 +78,7 @@ P_ = np.array([[-89.849233365241602, -23.582355805480020, 498.930855552969945, -
 
 # Quantization parameters
 r_scale = 10000
-s_scale = 10000
+s_scale = 13000
 
 scaled_value = s_scale**2
 
@@ -134,7 +134,7 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 100
+iter = 240
 execution_times = []  # 실행 시간을 저장할 리스트
 
 # 초기값
@@ -166,7 +166,7 @@ for i in range(iter):
     
     # 외부 impulse 어택을 400 이터레이션 때
     disturbance = 0
-    if i > 100 and i <500:
+    if i > 200 and i <500:
         disturbance = 2
 
     disturbance_values.append(disturbance)  # disturbance 저장
@@ -300,7 +300,7 @@ resi = np.hstack(resi)
 time = Ts * np.arange(iter)
 
 # Figure 설정: 가로로 길게 (1열 3행)
-fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(5, 6))
+fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(5, 5))
 # 예: time이 0~10까지 1000포인트라면 xticks를 간격 2로 설정
 xticks = np.arange(0, time[-1] + 1, 2)
 
@@ -318,20 +318,20 @@ diff_u_plot = np.abs(diff_u)  # 절댓값으로 변경
 # diff_u_plot = np.clip(diff_u_plot, 0, 0.03)  # 0.2로 클립
 
 # 전체 실선 그리기 (400 이후는 어차피 0이라 위 점선보다 늦게 그리면 가려버림)
-axes[1].plot(time, diff_u_plot, label='||u_diff||', color='g', linestyle='-')
+# axes[1].plot(time, diff_u_plot, label='||u_diff||', color='g', linestyle='-')
 
-axes[1].set_title('Norm of Difference', fontsize=14)
-# axes[1].set_yticks([0, 0.01, 0.01])  # y축 범위를 0, 0.1, 0.2로 설정
-axes[1].tick_params(axis='y', labelsize=12)
-axes[1].legend()
+# axes[1].set_title('Norm of Difference', fontsize=14)
+# # axes[1].set_yticks([0, 0.01, 0.01])  # y축 범위를 0, 0.1, 0.2로 설정
+# axes[1].tick_params(axis='y', labelsize=12)
+# axes[1].legend()
 
 # 3. Residue Disclosure
-axes[2].plot(time, resi[0, :], label='Residue of y_1', color='m', linestyle='--')
-axes[2].plot(time, resi[1, :], label='Residue of y_2', color='y', linestyle='-')
-axes[2].set_title('Residue Disclosure', fontsize=14)
-axes[2].set_yticks([0.3, 0.2, 0.1, 0, -0.1])
-axes[2].tick_params(axis='y', labelsize=12)
-axes[2].legend()
+axes[1].plot(time, resi[0, :], label='Residue of y_1', color='m', linestyle='--')
+axes[1].plot(time, resi[1, :], label='Residue of y_2', color='y', linestyle='-')
+axes[1].set_title('Residue Disclosure', fontsize=14)
+axes[1].set_yticks([0.3, 0.2, 0.1, 0, -0.1])
+axes[1].tick_params(axis='y', labelsize=12)
+axes[1].legend()
 
 # # 별도 Figure에 qU만 그리기
 # plt.figure(figsize=(6, 3))
