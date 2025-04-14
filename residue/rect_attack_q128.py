@@ -7,39 +7,39 @@ from decimal import Decimal
 from sympy import mod_inverse
 from sympy import isprime
 
-
 np.seterr(over='raise', invalid='raise')  # 오버플로우 및 NaN 발생 시 에러 발생
 
 # 파라미터 생성 // q L e 
-Ts = 0.1 # 루프타임이 58ms이니까 100ms의 샘플링타임으로 설정
+Ts = 0.05 # 루프타임이 28ms 니까 50ms 샘플링타임으로 설정
 env = lwe.params()  # 환경 설정
 sk = lwe.Seret_key(env)
-
 print(isprime(env.q))
 
+############ Discretized Plant Model wiht 50ms #################
+# A = np.array([[1.000000000000000, 0.009990914092165, 0.000133590122189, 0.000000445321570], 
+#           [0.000000000000000, 0.998183267746166, 0.026716874509824, 0.000133590122189], 
+#           [0.000000000000000, -0.000022719408536, 1.001559293628154, 0.010005197273892], 
+#           [0.000000000000000, -0.004543686141126, 0.311919519484923, 1.001559293628154]])
 
-############ Discretized Plant Model with 100ms #################
-# A = np.array([[1.000000000000000,   0.009990914092165,   0.000133590122189,   0.000000445321570],
-#               [0,   0.998183267746166,   0.026716874509824,   0.000133590122189],
-#               [0,  -0.000022719408536,   1.001559293628154,   0.010005197273892],
-#               [0,  -0.004543686141126,   0.311919519484923,   1.001559293628154]])  
-
-# B = np.array([[0.000090859078355], [0.018167322538343], [0.000227194085355], [0.045436861411265]])  
+# B = np.array([[0.000090859078355], 
+#           [0.018167322538343], 
+#           [0.000227194085355], 
+#           [0.045436861411265]])
 
 C = np.array([[1, 0, 0, 0],
               [0, 0, 1, 0]])
 
 ############ Controller Model with Re-Enc #################
 
+
+# F_ should be integer
 F_ = np.array([[0, 0, 1, 0],
                [0, 0, 0, 1],
                [0, 0, 0, 0],
-               [0, 0, 0, 0]])  
-
+               [0, 0, 0, 0]])
 
 J_ = np.array([[1, 0],
-               [0, 1]]).astype(int)
-
+               [0, 1]])
 
 '''
 매트랩 복붙
@@ -79,18 +79,18 @@ P_ = np.array([[-167.022116552110845, 57.580185408028491, 243.134418436244800, -
 # 40배 정도 더 늘어난거니까
 
 # Quantization parameters
-r = 0.00001
-s = 0.00005
-scaled_value = int(1 / s**2)
+r_scale = 100000
+s_scale = 100000
 
+scaled_value = s_scale**2
 
-qG = np.round(G_ / s).astype(int)
-qH = np.round(H_/ s).astype(int)
+print("sclaed value", scaled_value)
 
-
-qP = np.round(P_ / s).astype(int)
-qJ = np.round(J_ * scaled_value).astype(int)
-qR = np.round(R_ / s).astype(int)
+qG = np.round(G_ * s_scale).astype(int)
+qH = np.round(H_* s_scale).astype(int)
+qP = np.round(P_ * s_scale).astype(int)
+qJ = np.round(J_ * s_scale**2).astype(object)
+qR = np.round(R_ * s_scale).astype(int)
 
 
 
@@ -110,11 +110,14 @@ J_inv = (inverse * J_).astype(object) # GPT로 구한 2^64-59에서의 10^6의 i
 # J_inv = np.array([[2342055259102470954, 0],
 #                 [0, 2342055259102470954]]).astype(int)
 
+print(2342055259102470954*100000000)
 print("J_inv @ qJ ", J_inv @ qJ)
 
 
 M = np.vectorize(lambda x: int(lwe.Mod(x, env.q)))(J_inv @ qH)
 W = np.vectorize(lambda x: int(lwe.Mod(x, env.q)))(F_ - qG @ J_inv @ qH)
+
+
 
 
 
@@ -133,22 +136,22 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 500
+iter = 100
 execution_times = []  # 실행 시간을 저장할 리스트
 
 # 초기값
 
-xp0 = np.array([[1], [0], [0.1], [0.1]])
+xp0 = np.array([[0], [0], [0.1], [0.1]])
 xc0 = np.array([[0], [0], [0], [0]])
 # Initialize variables with proper int conversion at the beginning
 
 xp, xc, u, y = [xp0], [xc0], [], []
 x_p, x_c, u_, y_, r_ = [xp0], [xc0], [], [], []
-Xp, qXc, Xc, Y, U = [xp0], [np.round(xc0 / (r * s)).astype(int)], [xc0], [], []
+Xp, qXc, Xc, Y, U = [xp0], [np.round(xc0 * r_scale * s_scale).astype(int)], [xc0], [], []
 resi, qY, qU, residue, cY, cU, cresi = [], [], [], [], [], [], []
 diff_u, diff_Xc = [], []
 
-qX0 = np.round(xc0 / (r * s)).astype(int)
+qX0 = np.round(xc0 * r_scale * s_scale).astype(int)
 
 # print("qX0: ",qX0)
 # Encrypted controller initial state
@@ -165,7 +168,7 @@ for i in range(iter):
     
     # 외부 impulse 어택을 400 이터레이션 때
     disturbance = 0
-    if i > 400 and i <500:
+    if i > 100 and i <500:
         disturbance = 2
 
     disturbance_values.append(disturbance)  # disturbance 저장
@@ -192,7 +195,7 @@ for i in range(iter):
     # sensor
 
     Y.append(C @ Xp[-1])  # Y에 스칼라 값 저장
-    qY.append(np.vectorize(lambda x: int(round(Decimal(x))), otypes=[object])(Y[-1] / r))
+    qY.append(np.vectorize(lambda x: int(round(Decimal(x))), otypes=[object])(Y[-1] * r_scale))
     cY.append(lwe.Enc_res(qY[-1], sk, Bx, M,env))
 
     
@@ -200,7 +203,8 @@ for i in range(iter):
     # controller
     
     cU.append(lwe.Mod(qP @ cX0, env.q))
-    cU[-1][0][0] += disturbance * int(env.L / (r*s*s))
+    cU[-1][0][0] += disturbance * int(env.L * r_scale * s_scale**2)
+    # cU[-1][0][0] += disturbance * 10**15
     # print("cU",cU[-1])   # 첫 번째 요소에만 disturbance 더하기
     # print("cU[-1][0][0]",cU[-1][0][0])
     # 첫 번째 값에만 disturbance를 더하기
@@ -215,7 +219,8 @@ for i in range(iter):
 
     # actuator
     qU.append(lwe.Dec_res(cU[-1], sk, env))
-    U.append(qU[-1] * r * s * s)  
+    U.append(qU[-1] / (r_scale * s_scale**2))  
+    
     # U.append(qU[-1] * r * s * s + random.uniform(-0.1, 0.1))
 
     ###############################################
@@ -229,15 +234,15 @@ for i in range(iter):
     # 2x(N+2) 크기의 배열 생성
     residue_array = np.zeros((2, env.N + 2), dtype=object)
     # 첫 번째 열에 cresi[-1]을 s**2 곱한 값으로 업데이트 # residue array 는 크기 N+2 리스트 두개
-    residue_array[0, 0] = int(round(cresi[-1][0, 0] *s*s))  # 첫 번째 행 첫 번째 열
-    residue_array[1, 0] = int(round(cresi[-1][1, 0] *s*s))  # 두 번째 행 첫 번째 열
+    residue_array[0, 0] = int(round(cresi[-1][0, 0] / (s_scale**2)))  # 첫 번째 행 첫 번째 열
+    residue_array[1, 0] = int(round(cresi[-1][1, 0] / (s_scale**2)))  # 두 번째 행 첫 번째 열
 
     # print(residue_array[0, 0])
     # print(residue_array[1, 0])
     # 여기서 만든 residue array가 Xc 업데이트에 쓰일 예정
 
     # 2x1 배열만 추가 (첫 번째 열)
-    resi.append((r/env.L) * residue_array[:, 0].reshape(2, 1))  # 2x1 배열로 추가
+    resi.append((1/(r_scale*env.L))*residue_array[:, 0].reshape(2, 1))  # 2x1 배열로 추가
     
     #################################################################
     ######################### state update  #########################
@@ -286,6 +291,7 @@ disturbance_values = np.array(disturbance_values)  # 배열 변환
 
 
 # Convert lists to arrays for plotting
+qU = np.hstack(qU).flatten()
 u_ = np.hstack(u_).flatten()
 U = np.hstack(U).flatten()
 y_ = np.hstack(y_)
@@ -295,42 +301,51 @@ diff_Xc = np.hstack(diff_Xc).flatten()
 resi = np.hstack(resi)
 time = Ts * np.arange(iter)
 
-# Figure 설정: 가로로 길게 (1열 4행)
-fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(10, 12))
+# Figure 설정: 가로로 길게 (1열 3행)
+fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(5, 6))
+# 예: time이 0~10까지 1000포인트라면 xticks를 간격 2로 설정
+xticks = np.arange(0, time[-1] + 1, 2)
 
 # 1. Original input (u_) vs Encrypted input (U)
-axes[0].plot(time, U, label='Encrypted U', linestyle='-', color='r')
-axes[0].plot(time, u_, label='Original u', linestyle='--', color='b')
-axes[0].plot(time, disturbance_values, label='Attack', linestyle=':', color='k')  # Disturbance 추가
-axes[0].set_title('Input Comparison (Original vs. Encrypted)')
+axes[0].plot(time, U, label='Encrypted Controller', linestyle='-', color='r')
+axes[0].plot(time, u_, label='Original Controller', linestyle='--', color='b')
+axes[0].plot(time, disturbance_values, label='Attack', linestyle=':', color='k')
+axes[0].set_title('Control Input Comparison', fontsize=14)
+axes[0].set_yticks([2, 0, -2, -4, -6])
+axes[0].tick_params(axis='y', labelsize=12)
 axes[0].legend()
 
-# 2. Original output (y_) vs Encrypted output (Y)
-axes[1].plot(time, y_[0, :], label='Original y (Row 1)', linestyle='--', color='b')
-axes[1].plot(time, y_[1, :], label='Original y (Row 2)', linestyle='--', color='c')
-axes[1].plot(time, Y[0, :], label='Encrypted Y (Row 1)', linestyle='-', color='r')
-axes[1].plot(time, Y[1, :], label='Encrypted Y (Row 2)', linestyle='-', color='m')
-axes[1].set_title('Output Comparison (Original vs. Encrypted)')
+# 2. Difference between u_ and U (절댓값, 클립)
+diff_u_plot = np.abs(diff_u)  # 절댓값으로 변경
+# diff_u_plot = np.clip(diff_u_plot, 0, 0.03)  # 0.2로 클립
+
+# 전체 실선 그리기 (400 이후는 어차피 0이라 위 점선보다 늦게 그리면 가려버림)
+axes[1].plot(time, diff_u_plot, label='||u_diff||', color='g', linestyle='-')
+
+axes[1].set_title('Norm of Difference', fontsize=14)
+# axes[1].set_yticks([0, 0.01, 0.01])  # y축 범위를 0, 0.1, 0.2로 설정
+axes[1].tick_params(axis='y', labelsize=12)
 axes[1].legend()
 
-# 기존 코드
-# axes[2].plot(time, np.clip(diff_u, -0.01, 0.01), label='Difference (u_ - U)', color='g')
-# axes[2].set_title('Difference between u_ and U')
-# axes[2].legend()
-
-# 새로운 코드
-diff_u_plot = diff_u.copy()
-diff_u_plot[400:] = 0  # 400번째 이후는 0으로 세팅
-
-axes[2].plot(time, diff_u_plot, label='Difference (u_ - U)', color='g')
-axes[2].set_title('Difference between u_ and U (zeroed after iteration 400)')
+# 3. Residue Disclosure
+axes[2].plot(time, resi[0, :], label='Residue of y_1', color='m', linestyle='--')
+axes[2].plot(time, resi[1, :], label='Residue of y_2', color='y', linestyle='-')
+axes[2].set_title('Residue Disclosure', fontsize=14)
+axes[2].set_yticks([0.3, 0.2, 0.1, 0, -0.1])
+axes[2].tick_params(axis='y', labelsize=12)
 axes[2].legend()
-# 4. Residue Disclosure
-axes[3].plot(time, resi[0, :], label='Residue (Row 1)', color='m', linestyle='--')
-axes[3].plot(time, resi[1, :], label='Residue (Row 2)', color='y', linestyle='-')
-axes[3].set_title('Residue Disclosure')
-axes[3].legend()
+
+# # 별도 Figure에 qU만 그리기
+# plt.figure(figsize=(6, 3))
+# plt.plot(time, qU, label='Quantized Encrypted Input', color='purple')
+# plt.title('Quantized Control Input (qU)', fontsize=14)
+# plt.xlabel('Time (s)')
+# plt.ylabel('qU')
+# plt.grid(True)
+# plt.legend()
+# plt.tight_layout()
+# plt.show()
 
 # Layout 조정 및 플롯 표시
-plt.tight_layout()
+plt.tight_layout(rect=[0, 0, 1, 0.97])  # 위쪽 여백 조정
 plt.show()

@@ -47,10 +47,7 @@ B = sysD.B;
 % controller design
 Q2 = 100*eye(n);
 
-Q1 = [1000 0 0 0; 
-     0 1 0 0;
-     0 0 1000 0;
-     0 0 0 1];
+
 
 R1 = 1 * eye(m);
 R2 = 1 * eye(l);
@@ -107,7 +104,7 @@ P_ = P/T;
 % 이제는 H_가 정수가 아니다..
 
 % quantization parameters
-r = 0.00001;
+r = 0.0001;
 s = 0.00005; 
  
 % quantization of control parameters
@@ -208,7 +205,7 @@ for i = 1:iter
 end
 
 %% 여기까지 정수화로 변환한 친구랑 원래 시스템 플랏 비교하기
-figure(1);
+figure(3);
 clf; % 기존 figure 내용을 지움
 
 % 1. Control Input (u)
@@ -221,7 +218,7 @@ legend('Original Controller', 'Quantized Controller', 'FontSize', 12);
 grid on;
 xlabel('Time (s)');
 ylabel('Control Input');
-ylim([-0.5, 0.5]); % 필요에 따라 조정
+% ylim([-0.5, 0.5]); % 필요에 따라 조정
 
 % 2. Plant Output (y)
 subplot(1, 2, 2);
@@ -236,9 +233,39 @@ legend('x position (Original)', 'x position (Quantized)', ...
 grid on;
 xlabel('Time (s)');
 ylabel('System Output');
-ylim([-0.05, 0.05]); % 필요에 따라 조정
+% ylim([-0.05, 0.05]); % 필요에 따라 조정
 
 sgtitle('Comparison of Original vs. Quantized System', 'FontSize', 16); % 전체 제목 추가
+
+
+%% 오리지널과 양자화 컨트롤러의 차이 절댓값 플롯
+figure(4);
+clf;
+
+
+% 1. Control Input Difference
+subplot(1, 2, 1);
+plot(Ts*(0:iter-1), abs(diff_u), 'k-', 'LineWidth', 1.5);
+xlabel('Time (s)');
+ylabel('|u_{original} - u_{quantized}|');
+grid on;
+
+% 2. Controller State Difference
+subplot(1, 2, 2);
+plot(Ts*(0:iter-1), abs(diff_Xc(1,:)), 'b-', 'LineWidth', 1.5); hold on;
+plot(Ts*(0:iter-1), abs(diff_Xc(2,:)), 'r--', 'LineWidth', 1.5);
+plot(Ts*(0:iter-1), abs(diff_Xc(3,:)), 'g-.', 'LineWidth', 1.5);
+plot(Ts*(0:iter-1), abs(diff_Xc(4,:)), 'm:', 'LineWidth', 1.5);
+legend('|x_{c,1}|', '|x_{c,2}|', '|x_{c,3}|', '|x_{c,4}|', 'FontSize', 12);
+xlabel('Time (s)');
+ylabel('|x_c - Xc|');
+grid on;
+
+sgtitle('Absolute Differences', 'FontSize', 10);
+
+
+
+%% 파이썬 옮기는 용
 
 
 fprintf('A = np.array([');

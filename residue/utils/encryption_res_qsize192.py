@@ -10,11 +10,12 @@ from decimal import Decimal
 class params:
     def __init__(self):
         # 여기서 K의 최댓값은 355,700,000
-        self.p = int(2**54)  # p 
+        self.p = int(2**182)  # p 
         self.L = int(2**10)  # L 
         self.r = 10         # 오류 범위
-        self.N = 4     # 키 차원 
-        self.q = self.p * self.L -59 # 2^64 근처 소수 18446744073709551557
+        self.N = 8    # 키 차원 
+        self.q = self.p * self.L - 31607440781194102568158971183701171116815 # 근처 소수
+
         
 env = params()
 
