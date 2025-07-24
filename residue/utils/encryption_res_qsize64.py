@@ -13,7 +13,7 @@ class params:
         self.p = int(2**54)  # p 
         self.L = int(2**10)  # L 
         self.r = 10         # 오류 범위
-        self.N = 4     # 키 차원 
+        self.N = 3000     # 키 차원 
         self.q = self.p * self.L -59 # 2^64 근처 소수 18446744073709551557
         
 env = params()
@@ -25,7 +25,8 @@ def Mod(x, p):
 
 
 def Seret_key(env):
-    return Mod(np.array([[random.randint(0, env.q - 1)] for _ in range(env.N)], dtype=object),env.q)
+    # sk를 -1, 0, 1 중 하나로 무작위로 선택
+    return np.array([[random.choice([-1, 0, 1])] for _ in range(env.N)], dtype=object)
 
 sk = Seret_key(env) 
 # print("sk", sk)

@@ -26,7 +26,8 @@ def Mod(x, p):
 
 
 def Seret_key(env):
-    return Mod(np.array([[random.randint(0, env.q - 1)] for _ in range(env.N)], dtype=object),env.q)
+    # sk를 -1, 0, 1 중 하나로 무작위로 선택
+    return np.array([[random.choice([-1, 0, 1])] for _ in range(env.N)], dtype=object)
 
 sk = Seret_key(env) 
 # print("sk", sk)

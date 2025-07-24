@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import utils.encryption_res_qsize64 as lwe
+import utils.encryption_res_qsize64 as lwe  # 기존 암호화 함수는 lwe로 유지
 import time
 import random
 from decimal import Decimal
@@ -13,7 +13,35 @@ np.seterr(over='raise', invalid='raise')  # 오버플로우 및 NaN 발생 시 �
 Ts = 0.05 # 루프타임이 28ms 니까 50ms 샘플링타임으로 설정
 env = lwe.params()  # 환경 설정
 sk = lwe.Seret_key(env)
-print(isprime(env.q))
+print("q is prime?", isprime(env.q))
+print("N is", env.N)
+
+# lattice-estimator로 보안레벨 출력
+# import sys
+# sys.path.append('./lattice-estimator')  # 현재 residue 폴더 기준
+
+try:
+    from lattice_estimator.estimator import *
+
+    n = int(env.N)
+    q = int(env.q)
+    r = int(env.r)
+
+    params = LWE.Parameters(
+        n=n,
+        q=q,
+        Xs=ND.Uniform(-1, 1, n=n),      # sk: -1, 0, 1
+        Xe=ND.Uniform(-r, r)            # error: -r ~ r
+    )
+
+    results = LWE.estimate.rough(params)
+    print('\nLWE lattice security estimate:')
+    print('------------------------------')
+    for attack, res in results.items():
+        print(f"{attack}: rop={res.get('rop', 'N/A')}")
+    print('full result:', results)
+except Exception as e:
+    print('lattice-estimator 실행 중 오류:', e)
 
 ############ Discretized Plant Model wiht 50ms #################
 # A = np.array([[1.000000000000000, 0.009990914092165, 0.000133590122189, 0.000000445321570], 
@@ -347,3 +375,4 @@ axes[1].legend()
 # Layout 조정 및 플롯 표시
 plt.tight_layout(rect=[0, 0, 1, 0.97])  # 위쪽 여백 조정
 plt.show()
+
