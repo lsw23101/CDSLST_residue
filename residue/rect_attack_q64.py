@@ -20,28 +20,28 @@ print("N is", env.N)
 # import sys
 # sys.path.append('./lattice-estimator')  # 현재 residue 폴더 기준
 
-try:
-    from lattice_estimator.estimator import *
+# try:
+#     from lattice_estimator.estimator import *
 
-    n = int(env.N)
-    q = int(env.q)
-    r = int(env.r)
+#     n = int(env.N)
+#     q = int(env.q)
+#     r = int(env.r)
 
-    params = LWE.Parameters(
-        n=n,
-        q=q,
-        Xs=ND.Uniform(-1, 1, n=n),      # sk: -1, 0, 1
-        Xe=ND.Uniform(-r, r)            # error: -r ~ r
-    )
+#     params = LWE.Parameters(
+#         n=n,
+#         q=q,
+#         Xs=ND.Uniform(-1, 1, n=n),      # sk: -1, 0, 1
+#         Xe=ND.Uniform(-r, r)            # error: -r ~ r
+#     )
 
-    results = LWE.estimate.rough(params)
-    print('\nLWE lattice security estimate:')
-    print('------------------------------')
-    for attack, res in results.items():
-        print(f"{attack}: rop={res.get('rop', 'N/A')}")
-    print('full result:', results)
-except Exception as e:
-    print('lattice-estimator 실행 중 오류:', e)
+#     results = LWE.estimate.rough(params)
+#     print('\nLWE lattice security estimate:')
+#     print('------------------------------')
+#     for attack, res in results.items():
+#         print(f"{attack}: rop={res.get('rop', 'N/A')}")
+#     print('full result:', results)
+# except Exception as e:
+#     print('lattice-estimator 실행 중 오류:', e)
 
 ############ Discretized Plant Model wiht 50ms #################
 # A = np.array([[1.000000000000000, 0.009990914092165, 0.000133590122189, 0.000000445321570], 
@@ -327,9 +327,8 @@ diff_Xc = np.hstack(diff_Xc).flatten()
 resi = np.hstack(resi)
 time = Ts * np.arange(iter)
 
-# Figure 설정: 가로로 길게 (1열 3행)
-fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(5, 5))
-# 예: time이 0~10까지 1000포인트라면 xticks를 간격 2로 설정
+# Figure 설정: 1행 3열로 변경
+fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 4))
 xticks = np.arange(0, time[-1] + 1, 2)
 
 # 1. Original input (u_) vs Encrypted input (U)
@@ -341,38 +340,24 @@ axes[0].set_yticks([2, 0, -2, -4, -6])
 axes[0].tick_params(axis='y', labelsize=12)
 axes[0].legend()
 
-# 2. Difference between u_ and U (절댓값, 클립)
-diff_u_plot = np.abs(diff_u)  # 절댓값으로 변경
-# diff_u_plot = np.clip(diff_u_plot, 0, 0.03)  # 0.2로 클립
-
-# 전체 실선 그리기 (400 이후는 어차피 0이라 위 점선보다 늦게 그리면 가려버림)
-# axes[1].plot(time, diff_u_plot, label='||u_diff||', color='g', linestyle='-')
-
-# axes[1].set_title('Norm of Difference', fontsize=14)
-# # axes[1].set_yticks([0, 0.01, 0.01])  # y축 범위를 0, 0.1, 0.2로 설정
-# axes[1].tick_params(axis='y', labelsize=12)
-# axes[1].legend()
-
-# 3. Residue Disclosure
-axes[1].plot(time, resi[0, :], label='Residue of y_1', color='m', linestyle='--')
-axes[1].plot(time, resi[1, :], label='Residue of y_2', color='y', linestyle='-')
-axes[1].set_title('Residue Disclosure', fontsize=14)
-axes[1].set_yticks([0.3, 0.2, 0.1, 0, -0.1])
+# 2. Difference between u_ and U (절댓값, 어택 전만)
+diff_u_plot = np.abs(diff_u)
+attack_start_idx = np.argmax(disturbance_values != 0)  # disturbance가 0이 아닌 첫 인덱스
+if attack_start_idx == 0:  # disturbance가 전부 0이면 전체 플롯
+    attack_start_idx = len(time)
+axes[1].plot(time[:attack_start_idx], diff_u_plot[:attack_start_idx], label='||u_diff|| (attack 이전)', color='g', linestyle='-')
+axes[1].set_title('Norm of Difference (Before Attack)', fontsize=14)
 axes[1].tick_params(axis='y', labelsize=12)
 axes[1].legend()
 
-# # 별도 Figure에 qU만 그리기
-# plt.figure(figsize=(6, 3))
-# plt.plot(time, qU, label='Quantized Encrypted Input', color='purple')
-# plt.title('Quantized Control Input (qU)', fontsize=14)
-# plt.xlabel('Time (s)')
-# plt.ylabel('qU')
-# plt.grid(True)
-# plt.legend()
-# plt.tight_layout()
-# plt.show()
+# 3. Residue Disclosure
+axes[2].plot(time, resi[0, :], label='Residue of y_1', color='m', linestyle='--')
+axes[2].plot(time, resi[1, :], label='Residue of y_2', color='y', linestyle='-')
+axes[2].set_title('Residue Disclosure', fontsize=14)
+axes[2].set_yticks([0.3, 0.2, 0.1, 0, -0.1])
+axes[2].tick_params(axis='y', labelsize=12)
+axes[2].legend()
 
-# Layout 조정 및 플롯 표시
-plt.tight_layout(rect=[0, 0, 1, 0.97])  # 위쪽 여백 조정
+plt.tight_layout(rect=[0, 0, 1, 0.97])
 plt.show()
 
