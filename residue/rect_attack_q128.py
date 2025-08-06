@@ -46,33 +46,31 @@ J_ = np.array([[1, 0],
 '''
 
 
-A = np.array([[1.000000000000000, 0.099091315838924, 0.013632351698217, 0.000450408274543], 
-          [0.000000000000000, 0.981778666086312, 0.278888611257509, 0.013632351698217], 
-          [0.000000000000000, -0.002318427159561, 1.159794783603433, 0.105273449905749], 
-          [0.000000000000000, -0.047430035928148, 3.276421050834629, 1.159794783603433]])
+A = np.array([[1.000000000000000, 0.049773098368562, 0.003352519883901, 0.000055772534794], 
+          [0.000000000000000, 0.990924994598992, 0.134769006497267, 0.003352519883901], 
+          [0.000000000000000, -0.000570156442840, 1.039205686203506, 0.050651840518290], 
+          [0.000000000000000, -0.022919899064161, 1.577892608941279, 1.039205686203506]])
 
-B = np.array([[0.009086841610758], 
-          [0.182213339136875], 
-          [0.023184271595607], 
-          [0.474300359281477]])
-
-
-R_ = np.array([[-0.158717825831511, 0.168218536215741], 
-          [-0.162175411950193, 0.333399971252324], 
-          [-0.007573452606575, 0.076446003699856], 
-          [-0.019672108903376, 0.187645926159056]])
-
-G_ = np.array([[0.203157831946646, -0.031566146482456], 
-          [0.007723874130122, 0.138764067572083], 
-          [-0.154623874970329, 0.058527812034872], 
-          [-0.133834642969481, 0.047360629819598]])
-
-H_ = np.array([[-12.118455534346356, 3.466860377603570, -0.000000000000002, -0.000000000000002], 
-          [-5.405051675309685, -1.567040096671678, -0.000000000000001, -0.000000000000001]])
-
-P_ = np.array([[-167.022116552110845, 57.580185408028491, 243.134418436244800, -386.482053445286169]])
+B = np.array([[0.002269016314383], 
+          [0.090750054010083], 
+          [0.005701564428404], 
+          [0.229198990641610]])
 
 
+R_ = np.array([[-24.942201844648217, 22.768032210604431], 
+          [-29.281859888240689, 16.498292275699242], 
+          [-1.714142319638896, 10.445505513068206], 
+          [-0.594319468957815, 4.164460817978995]])
+
+G_ = np.array([[0.648532844834861, 34.999112403572752], 
+          [40.260848551562752, -2.337780537613746], 
+          [-22.399739689849856, 5.125843717816062], 
+          [-29.005624939009063, 10.020176358830199]])
+
+H_ = np.array([[0.014992858827167, -0.061093920878550, 0.000000000000000, 0.000000000000000], 
+          [-0.012837770727062, -0.027876707739698, 0.000000000000000, 0.000000000000000]])
+
+P_ = np.array([[-0.235823558054800, -0.898492333652418, -6.632227043309035, 4.989308555529700]])
 
 
 # L*r*s*s ~ 2^48 정도
@@ -136,12 +134,12 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 100
+iter = 300
 execution_times = []  # 실행 시간을 저장할 리스트
 
 # 초기값
 
-xp0 = np.array([[0], [0], [0.1], [0.1]])
+xp0 = np.array([[0.05], [0.0], [0.05], [0.0]])
 xc0 = np.array([[0], [0], [0], [0]])
 # Initialize variables with proper int conversion at the beginning
 
@@ -176,7 +174,7 @@ for i in range(iter):
     '''############# original 컨트롤러 ############## '''
 
     y_.append(C @ x_p[-1])
-    u_.append(P_ @ x_c[-1])
+    u_.append(P_ @ x_c[-1] + disturbance)
     r_.append(H_ @ x_c[-1] + J_ @ y_[-1])
     x_p.append(A @ x_p[-1] + B @ u_[-1])
     x_c.append(F_ @ x_c[-1] + G_ @ y_[-1] + R_ @ r_[-1])
@@ -301,51 +299,50 @@ diff_Xc = np.hstack(diff_Xc).flatten()
 resi = np.hstack(resi)
 time = Ts * np.arange(iter)
 
-# Figure 설정: 가로로 길게 (1열 3행)
-fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(5, 6))
-# 예: time이 0~10까지 1000포인트라면 xticks를 간격 2로 설정
-xticks = np.arange(0, time[-1] + 1, 2)
 
+# Figure 설정: 3개의 별도 창으로 분리
 # 1. Original input (u_) vs Encrypted input (U)
-axes[0].plot(time, U, label='Encrypted Controller', linestyle='-', color='r')
-axes[0].plot(time, u_, label='Original Controller', linestyle='--', color='b')
-axes[0].plot(time, disturbance_values, label='Attack', linestyle=':', color='k')
-axes[0].set_title('Control Input Comparison', fontsize=14)
-axes[0].set_yticks([2, 0, -2, -4, -6])
-axes[0].tick_params(axis='y', labelsize=12)
-axes[0].legend()
+plt.figure(figsize=(8, 4))
+plt.plot(time, U, label='Encrypted Controller', linestyle='-', color='r')
+plt.plot(time, u_, label='Original Controller', linestyle='--', color='b')
+plt.plot(time, disturbance_values, label='Attack', linestyle=':', color='k')
+plt.xlabel('Time (sec)')
+plt.ylabel('u(t)')
+plt.legend()
+plt.grid(True)
+plt.show()
 
-# 2. Difference between u_ and U (절댓값, 클립)
-diff_u_plot = np.abs(diff_u)  # 절댓값으로 변경
-# diff_u_plot = np.clip(diff_u_plot, 0, 0.03)  # 0.2로 클립
-
-# 전체 실선 그리기 (400 이후는 어차피 0이라 위 점선보다 늦게 그리면 가려버림)
-axes[1].plot(time, diff_u_plot, label='||u_diff||', color='g', linestyle='-')
-
-axes[1].set_title('Norm of Difference', fontsize=14)
-# axes[1].set_yticks([0, 0.01, 0.01])  # y축 범위를 0, 0.1, 0.2로 설정
-axes[1].tick_params(axis='y', labelsize=12)
-axes[1].legend()
+# 2. Difference between u_ and U (절댓값, 어택 전만)
+diff_u_plot = np.abs(diff_u)
+attack_start_idx = np.argmax(disturbance_values != 0)  # disturbance가 0이 아닌 첫 인덱스
+if attack_start_idx == 0:  # disturbance가 전부 0이면 전체 플롯
+    attack_start_idx = len(time)
+plt.figure(figsize=(8, 4))
+plt.plot(time[:attack_start_idx], diff_u_plot[:attack_start_idx], label='||u_diff|| (attack 이전)', color='g', linestyle='-')
+plt.xlabel('Time (sec)')
+plt.ylabel('|u_origin - u_encrypted|')
+plt.legend()
+plt.grid(True)
+plt.show()
 
 # 3. Residue Disclosure
-axes[2].plot(time, resi[0, :], label='Residue of y_1', color='m', linestyle='--')
-axes[2].plot(time, resi[1, :], label='Residue of y_2', color='y', linestyle='-')
-axes[2].set_title('Residue Disclosure', fontsize=14)
-axes[2].set_yticks([0.3, 0.2, 0.1, 0, -0.1])
-axes[2].tick_params(axis='y', labelsize=12)
-axes[2].legend()
-
-# # 별도 Figure에 qU만 그리기
-# plt.figure(figsize=(6, 3))
-# plt.plot(time, qU, label='Quantized Encrypted Input', color='purple')
-# plt.title('Quantized Control Input (qU)', fontsize=14)
-# plt.xlabel('Time (s)')
-# plt.ylabel('qU')
-# plt.grid(True)
-# plt.legend()
-# plt.tight_layout()
-# plt.show()
-
-# Layout 조정 및 플롯 표시
-plt.tight_layout(rect=[0, 0, 1, 0.97])  # 위쪽 여백 조정
+plt.figure(figsize=(8, 4))
+plt.plot(time, resi[0, :], label='Residue of y_1', color='m', linestyle='--')
+plt.plot(time, resi[1, :], label='Residue of y_2', color='y', linestyle='-')
+plt.xlabel('Time (sec)')
+plt.ylabel('r(t)')
+plt.legend()
+plt.grid(True)
 plt.show()
+
+# time check
+execution_times = np.array(execution_times)
+avg_time = np.mean(execution_times)
+min_time = np.min(execution_times)
+max_time = np.max(execution_times)
+std_time = np.std(execution_times)
+
+print(f"\n평균 이터레이션 실행 시간: {avg_time * 1000:.3f} ms")
+print(f"최솟값: {min_time * 1000:.3f} ms")
+print(f"최댓값: {max_time * 1000:.3f} ms")
+print(f"표준편차: {std_time * 1000:.3f} ms")

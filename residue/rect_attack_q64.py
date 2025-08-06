@@ -72,7 +72,6 @@ J_ = np.array([[1, 0],
 '''
 매트랩 복붙
 '''
-
 A = np.array([[1.000000000000000, 0.049773098368562, 0.003352519883901, 0.000055772534794], 
           [0.000000000000000, 0.990924994598992, 0.134769006497267, 0.003352519883901], 
           [0.000000000000000, -0.000570156442840, 1.039205686203506, 0.050651840518290], 
@@ -84,29 +83,27 @@ B = np.array([[0.002269016314383],
           [0.229198990641610]])
 
 
-R_ = np.array([[-0.292818598882407, 0.164982922756992], 
-          [-0.249422018446482, 0.227680322106045], 
-          [-0.005943194689578, 0.041644608179790], 
-          [-0.017141423196389, 0.104455055130682]])
+R_ = np.array([[-24.942201844648217, 22.768032210604431], 
+          [-29.281859888240689, 16.498292275699242], 
+          [-1.714142319638896, 10.445505513068206], 
+          [-0.594319468957815, 4.164460817978995]])
 
-G_ = np.array([[0.402608485515628, -0.023377805376137], 
-          [0.006485328448349, 0.349991124035727], 
-          [-0.290056249390091, 0.100201763588302], 
-          [-0.223997396898498, 0.051258437178160]])
+G_ = np.array([[0.648532844834861, 34.999112403572752], 
+          [40.260848551562752, -2.337780537613746], 
+          [-22.399739689849856, 5.125843717816062], 
+          [-29.005624939009063, 10.020176358830199]])
 
-H_ = np.array([[-6.109392087854962, 1.499285882716716, 0.000000000000000, 0.000000000000000], 
-          [-2.787670773969834, -1.283777072706201, 0.000000000000000, 0.000000000000000]])
+H_ = np.array([[0.014992858827167, -0.061093920878550, 0.000000000000000, 0.000000000000000], 
+          [-0.012837770727062, -0.027876707739698, 0.000000000000000, 0.000000000000000]])
 
-P_ = np.array([[-89.849233365241602, -23.582355805480020, 498.930855552969945, -663.222704330903525]])
-
-
+P_ = np.array([[-0.235823558054800, -0.898492333652418, -6.632227043309035, 4.989308555529700]])
 
 # L*r*s*s ~ 2^48 정도
 # 40배 정도 더 늘어난거니까
 
 # Quantization parameters
 r_scale = 10000
-s_scale = 13000
+s_scale = 10000
 
 scaled_value = s_scale**2
 
@@ -162,12 +159,12 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 240
+iter = 300
 execution_times = []  # 실행 시간을 저장할 리스트
 
 # 초기값
 
-xp0 = np.array([[0], [0], [0.1], [0.1]])
+xp0 = np.array([[0.05], [0.0], [0.05], [0.0]])
 xc0 = np.array([[0], [0], [0], [0]])
 # Initialize variables with proper int conversion at the beginning
 
@@ -202,7 +199,7 @@ for i in range(iter):
     '''############# original 컨트롤러 ############## '''
 
     y_.append(C @ x_p[-1])
-    u_.append(P_ @ x_c[-1])
+    u_.append(P_ @ x_c[-1] + disturbance)  # disturbance 추가
     r_.append(H_ @ x_c[-1] + J_ @ y_[-1])
     x_p.append(A @ x_p[-1] + B @ u_[-1])
     x_c.append(F_ @ x_c[-1] + G_ @ y_[-1] + R_ @ r_[-1])
@@ -327,37 +324,50 @@ diff_Xc = np.hstack(diff_Xc).flatten()
 resi = np.hstack(resi)
 time = Ts * np.arange(iter)
 
-# Figure 설정: 1행 3열로 변경
-fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 4))
-xticks = np.arange(0, time[-1] + 1, 2)
-
+# Figure 설정: 3개의 별도 창으로 분리
 # 1. Original input (u_) vs Encrypted input (U)
-axes[0].plot(time, U, label='Encrypted Controller', linestyle='-', color='r')
-axes[0].plot(time, u_, label='Original Controller', linestyle='--', color='b')
-axes[0].plot(time, disturbance_values, label='Attack', linestyle=':', color='k')
-axes[0].set_title('Control Input Comparison', fontsize=14)
-axes[0].set_yticks([2, 0, -2, -4, -6])
-axes[0].tick_params(axis='y', labelsize=12)
-axes[0].legend()
+plt.figure(figsize=(8, 4))
+plt.plot(time, U, label='Encrypted Controller', linestyle='-', color='r')
+plt.plot(time, u_, label='Original Controller', linestyle='--', color='b')
+plt.plot(time, disturbance_values, label='Attack', linestyle=':', color='k')
+plt.xlabel('Time (sec)')
+plt.ylabel('u(t)')
+plt.legend()
+plt.grid(True)
+plt.show()
 
 # 2. Difference between u_ and U (절댓값, 어택 전만)
 diff_u_plot = np.abs(diff_u)
 attack_start_idx = np.argmax(disturbance_values != 0)  # disturbance가 0이 아닌 첫 인덱스
 if attack_start_idx == 0:  # disturbance가 전부 0이면 전체 플롯
     attack_start_idx = len(time)
-axes[1].plot(time[:attack_start_idx], diff_u_plot[:attack_start_idx], label='||u_diff|| (attack 이전)', color='g', linestyle='-')
-axes[1].set_title('Norm of Difference (Before Attack)', fontsize=14)
-axes[1].tick_params(axis='y', labelsize=12)
-axes[1].legend()
+plt.figure(figsize=(8, 4))
+plt.plot(time[:attack_start_idx], diff_u_plot[:attack_start_idx], label='||u_diff|| (attack 이전)', color='g', linestyle='-')
+plt.xlabel('Time (sec)')
+plt.ylabel('|u_origin - u_encrypted|')
+plt.legend()
+plt.grid(True)
+plt.show()
 
 # 3. Residue Disclosure
-axes[2].plot(time, resi[0, :], label='Residue of y_1', color='m', linestyle='--')
-axes[2].plot(time, resi[1, :], label='Residue of y_2', color='y', linestyle='-')
-axes[2].set_title('Residue Disclosure', fontsize=14)
-axes[2].set_yticks([0.3, 0.2, 0.1, 0, -0.1])
-axes[2].tick_params(axis='y', labelsize=12)
-axes[2].legend()
-
-plt.tight_layout(rect=[0, 0, 1, 0.97])
+plt.figure(figsize=(8, 4))
+plt.plot(time, resi[0, :], label='Residue of y_1', color='m', linestyle='--')
+plt.plot(time, resi[1, :], label='Residue of y_2', color='y', linestyle='-')
+plt.xlabel('Time (sec)')
+plt.ylabel('r(t)')
+plt.legend()
+plt.grid(True)
 plt.show()
+
+# time check
+execution_times = np.array(execution_times)
+avg_time = np.mean(execution_times)
+min_time = np.min(execution_times)
+max_time = np.max(execution_times)
+std_time = np.std(execution_times)
+
+print(f"\n평균 이터레이션 실행 시간: {avg_time * 1000:.3f} ms")
+print(f"최솟값: {min_time * 1000:.3f} ms")
+print(f"최댓값: {max_time * 1000:.3f} ms")
+print(f"표준편차: {std_time * 1000:.3f} ms")
 
