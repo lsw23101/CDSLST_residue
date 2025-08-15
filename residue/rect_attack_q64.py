@@ -6,6 +6,7 @@ import random
 from decimal import Decimal
 from sympy import mod_inverse
 from sympy import isprime
+import datetime
 
 np.seterr(over='raise', invalid='raise')  # 오버플로우 및 NaN 발생 시 에러 발생
 
@@ -184,22 +185,38 @@ cX0, Bx = lwe.Enc_state(qX0, sk, env)  # 여긱서 암호화 할때 cX0 의 마�
 
 disturbance_values = []
 
+# 핑크 노이즈 생성 함수 (자연스러운 외란)
+def generate_pink_noise(length, amplitude=0.05):
+    # 간단한 1/f 노이즈 생성
+    white_noise = np.random.normal(0, 1, length)
+    # 저주파 성분을 강화하여 자연스러운 변동 생성
+    pink_noise = np.cumsum(white_noise) * 0.01
+    return amplitude * pink_noise / np.max(np.abs(pink_noise))
+
+# 미리 핑크 노이즈 생성
+pink_noise_sequence = generate_pink_noise(iter, amplitude=0.05)
 
 for i in range(iter):
     
     start_time = time.time()  # 시작 시간 기록 
     
-    # 외부 impulse 어택을 400 이터레이션 때
-    disturbance = 0
-    if i > 200 and i <500:
-        disturbance = 2
-
-    disturbance_values.append(disturbance)  # disturbance 저장
+    # 기본 핑크 노이즈 외란 (자연스러운 변동)
+    base_disturbance = pink_noise_sequence[i]
+    
+    # 추가 impulse 어택 (200~500 이터레이션)
+    additional_disturbance = 0
+    if i > 200 and i < 500:
+        additional_disturbance = 2
+    
+    # 총 외란 = 기본 핑크 노이즈 + 추가 외란
+    total_disturbance = base_disturbance + additional_disturbance
+    
+    disturbance_values.append(total_disturbance)  # disturbance 저장
     
     '''############# original 컨트롤러 ############## '''
 
     y_.append(C @ x_p[-1])
-    u_.append(P_ @ x_c[-1] + disturbance)  # disturbance 추가
+    u_.append(P_ @ x_c[-1] + total_disturbance)  # total_disturbance 사용
     r_.append(H_ @ x_c[-1] + J_ @ y_[-1])
     x_p.append(A @ x_p[-1] + B @ u_[-1])
     x_c.append(F_ @ x_c[-1] + G_ @ y_[-1] + R_ @ r_[-1])
@@ -226,7 +243,7 @@ for i in range(iter):
     # controller
     
     cU.append(lwe.Mod(qP @ cX0, env.q))
-    cU[-1][0][0] += disturbance * int(env.L * r_scale * s_scale**2)
+    cU[-1][0][0] += total_disturbance * int(env.L * r_scale * s_scale**2)  # total_disturbance 사용
     # cU[-1][0][0] += disturbance * 10**15
     # print("cU",cU[-1])   # 첫 번째 요소에만 disturbance 더하기
     # print("cU[-1][0][0]",cU[-1][0][0])
@@ -324,7 +341,10 @@ diff_Xc = np.hstack(diff_Xc).flatten()
 resi = np.hstack(resi)
 time = Ts * np.arange(iter)
 
-# Figure 설정: 3개의 별도 창으로 분리
+# Figure 설정: 3개의 별도 창으로 분리하고 SVG 파일로 저장
+# 현재 시간을 파일명에 포함
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
 # 1. Original input (u_) vs Encrypted input (U)
 plt.figure(figsize=(8, 4))
 plt.plot(time, U, label='Encrypted Controller', linestyle='-', color='r')
@@ -334,19 +354,22 @@ plt.xlabel('Time (sec)')
 plt.ylabel('u(t)')
 plt.legend()
 plt.grid(True)
+plt.savefig(f'plot1_controller_comparison_{timestamp}.svg', format='svg', dpi=300, bbox_inches='tight')
 plt.show()
 
 # 2. Difference between u_ and U (절댓값, 어택 전만)
 diff_u_plot = np.abs(diff_u)
-attack_start_idx = np.argmax(disturbance_values != 0)  # disturbance가 0이 아닌 첫 인덱스
-if attack_start_idx == 0:  # disturbance가 전부 0이면 전체 플롯
+# 사인파 외란은 계속 있으므로, 추가 외란(2)이 들어가는 구간을 찾아야 함
+attack_start_idx = np.argmax(disturbance_values > 0.1)  # 0.1보다 큰 값이 들어가는 첫 인덱스 (추가 외란 구간)
+if attack_start_idx == 0:  # 추가 외란이 없으면 전체 플롯
     attack_start_idx = len(time)
 plt.figure(figsize=(8, 4))
-plt.plot(time[:attack_start_idx], diff_u_plot[:attack_start_idx], label='||u_diff|| (attack 이전)', color='g', linestyle='-')
+plt.plot(time[:attack_start_idx], diff_u_plot[:attack_start_idx], label='||u_diff|| (before attack)', color='g', linestyle='-')
 plt.xlabel('Time (sec)')
 plt.ylabel('|u_origin - u_encrypted|')
 plt.legend()
 plt.grid(True)
+plt.savefig(f'plot2_control_difference_{timestamp}.svg', format='svg', dpi=300, bbox_inches='tight')
 plt.show()
 
 # 3. Residue Disclosure
@@ -357,7 +380,14 @@ plt.xlabel('Time (sec)')
 plt.ylabel('r(t)')
 plt.legend()
 plt.grid(True)
+plt.savefig(f'plot3_residue_disclosure_{timestamp}.svg', format='svg', dpi=300, bbox_inches='tight')
 plt.show()
+
+print(f"\nSVG 파일들이 저장되었습니다:")
+print(f"- plot1_controller_comparison_{timestamp}.svg")
+print(f"- plot2_control_difference_{timestamp}.svg") 
+print(f"- plot3_residue_disclosure_{timestamp}.svg")
+
 
 # time check
 execution_times = np.array(execution_times)
