@@ -105,6 +105,7 @@ def run_simulation(r_scale, s_scale, env, lwe, A, B, C, F_, G_, H_, P_, J_, R_, 
     iter = 100
     # xp0 = np.array([[0.05], [0.0], [0.05], [0.0]])
     xp0 = np.array([[-0.1], [-0.1], [0.1], [0.1]])
+    # xp0 = np.array([[1], [1], [1], [1]])
     xc0 = np.array([[0.0], [0.0], [0.0], [0.0]])
     xp, xc, u, y = [xp0], [xc0], [], []
     x_p, x_c, u_, y_, r_ = [xp0], [xc0], [], [], []
@@ -151,9 +152,9 @@ def run_simulation(r_scale, s_scale, env, lwe, A, B, C, F_, G_, H_, P_, J_, R_, 
     # u diff 값들의 평균 계산
     # avg_diff_u = np.mean([np.linalg.norm(diff) for diff in diff_u])
     max_diff_u = np.max([np.linalg.norm(diff) for diff in diff_u])
-    # outlier 값 필터링 (0.2 초과하는 값은 제거)
-    if max_diff_u > 0.2:
-        return None
+    # # outlier 값 필터링 (0.2 초과하는 값은 제거)
+    # if max_diff_u > 0.2:
+    #     return None
     return max_diff_u
 
 
@@ -164,7 +165,7 @@ def run_simulation(r_scale, s_scale, env, lwe, A, B, C, F_, G_, H_, P_, J_, R_, 
 # 시뮬레이션 설정
 r_fixed_values = [10000]
 # 1/s_scale 값을 1/100000부터 1/1000까지 선형적으로 100개 생성
-inverse_s_values = np.linspace(1/100000, 1/500, num=100)
+inverse_s_values = np.linspace(1/1000000, 1/1000, num=100)
 # s_scale 값은 역수로 계산
 s_values = [int(1/inv_s) for inv_s in inverse_s_values]
 # 결과 저장
@@ -197,13 +198,10 @@ for r in r_fixed_values:
 r_fixed = 10000
 
 # 추가 일차함수: H_inf *Uinv_inf * U_inf * series_inf * (G_inf/2 * r + y_inf * s + 1/2 r s)
-series_inf = 34.1
-U_inf = 2.57
-Uinv_inf = 14.6
+
 H_inf = 150.614
-G_inf = 3.84
-R_inf = 4.67
 y_inf = 0.28
+# y_inf = 1.08
 arx_total = 12.5265
 residue_inf = 0.1
 
@@ -211,7 +209,8 @@ residue_inf = 0.1
 이하 보조 직선/다항식은 x축을 1/s(=0~1)로 맞춰 계산
 """
 # x 축 정의 (시뮬레이션에서 실제 사용된 1/s를 우선 사용, 없으면 inverse_s_values 사용)
-x_axis = sorted(X_points[r_fixed]) if X_points[r_fixed] else list(inverse_s_values)
+x_axis_source = X_points.get(r_fixed, [])
+x_axis = sorted(x_axis_source) if len(x_axis_source) > 0 else list(inverse_s_values)
 
 # r은 1/r_fixed 사용
 r_eff = 1.0 / r_fixed
@@ -219,11 +218,11 @@ r_eff = 1.0 / r_fixed
 # 2차식: H_inf * G_inf * r + (H_inf + G_inf) * r * s + (H_inf + G_inf) * y_inf * s + y_inf * s^2 + r * s^2
 # y = const + linear * x + quadratic * x^2 형태
 const_term = H_inf * arx_total * r_eff
-linear_term = (H_inf + arx_total) * (r_eff + y_inf)
-quadratic_term = y_inf + r_eff
+linear_term = (2* H_inf + arx_total) * (r_eff + 2 * y_inf)
+quadratic_term = 8 * y_inf + 4 * r_eff
 poly_values = [(const_term + linear_term * x + quadratic_term * x**2) for x in x_axis]
 
-label_text = f"$y = {const_term:.6f} + {linear_term:.6f} \, s_s + {quadratic_term:.6f} \, s_s^2$"
+label_text = f"${const_term:.4f} + {linear_term:.4f} \, s_s + {quadratic_term:.4f} \, s_s^2$"
 plt.plot(
     x_axis,
     poly_values,
