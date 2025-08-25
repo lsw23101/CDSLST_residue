@@ -105,7 +105,7 @@ def run_simulation(r_scale, s_scale, env, lwe, A, B, C, F_, G_, H_, P_, J_, R_, 
 
     iter = 100
     xp0 = np.array([[-0.1], [-0.1], [0.1], [0.1]])
-    xc0 = np.array([[0], [0], [0], [0]])
+    xc0 = np.array([[0.0], [0.0], [0.0], [0.0]])
     xp, xc, u, y = [xp0], [xc0], [], []
     x_p, x_c, u_, y_, r_ = [xp0], [xc0], [], [], []
     Xp, qXc, Xc, Y, U = [xp0], [np.round(xc0 * r_scale * s_scale).astype(int)], [xc0], [], []
@@ -148,8 +148,12 @@ def run_simulation(r_scale, s_scale, env, lwe, A, B, C, F_, G_, H_, P_, J_, R_, 
         diff_u.append(u_[-1] - U[-1])
         diff_Xc.append(x_c[-1] - Xc[-1])
 
-    max_diff_u = max([np.linalg.norm(diff) for diff in diff_u])
-    return max_diff_u
+    # u diff 값들의 평균 계산
+    avg_diff_u = np.mean([np.linalg.norm(diff) for diff in diff_u])
+    # outlier 값 필터링 (0.2 초과하는 값은 제거)
+    if avg_diff_u > 0.2:
+        return None
+    return avg_diff_u
 
 
 # print("3593", run_simulation(10000, 3593, env, lwe, A, B, C, F_, G_, H_, P_, J_, R_, sk))
@@ -157,9 +161,11 @@ def run_simulation(r_scale, s_scale, env, lwe, A, B, C, F_, G_, H_, P_, J_, R_, 
 
 
 # 시뮬레이션 설정
-# r_fixed_values = [100000, 10000, 2000, 1000]
-r_fixed_values = [1000, 10000, 5000, 100000]
-s_values = [int(x) for x in np.logspace(3, 5, num=100)]
+r_fixed_values = [1000, 2000, 5000, 10000, 100000]
+# 1/s_scale 값을 1/100000부터 1/1000까지 선형적으로 100개 생성
+inverse_s_values = np.linspace(1/100000, 1/1000, num=100)
+# s_scale 값은 역수로 계산
+s_values = [int(1/inv_s) for inv_s in inverse_s_values]
 # 결과 저장
 line_results = {r: [] for r in r_fixed_values}
 
@@ -168,20 +174,34 @@ for r in r_fixed_values:
     for s in s_values:
         print(f"Simulating for r={r}, s={s}...")
         max_diff = run_simulation(r, s, env, lwe, A, B, C, F_, G_, H_, P_, J_, R_, sk)
-        line_results[r].append(max_diff)
-        print(f"r_scale={r}, s_scale={s} → max_diff_u = {max_diff:.6f}")
+        # outlier 값이 아닌 경우만 결과에 추가
+        if max_diff is not None:
+            line_results[r].append(max_diff)
+            print(f"r_scale={r}, s_scale={s} → avg_diff_u = {max_diff:.6f}")
+        else:
+            print(f"r_scale={r}, s_scale={s} → outlier (avg_diff_u > 0.2), skipped")
 
 # 시각화
-plt.figure(figsize=(8, 6))
+plt.figure(figsize=(12, 8))
 for r in r_fixed_values:
-    plt.plot(s_values, line_results[r], marker='o', markersize=2, linewidth=1.5, label=f"$\\mathrm{{s_r}} = 1/{r}$")
+    # 해당 r_scale에 대한 결과가 있는 경우만 플롯
+    if len(line_results[r]) > 0:
+        # s_scale 값에 대응하는 1/s_scale 값 계산
+        r_s_values = [s for s in s_values if run_simulation(r, s, env, lwe, A, B, C, F_, G_, H_, P_, J_, R_, sk) is not None]
+        r_inverse_s_values = [1/s for s in r_s_values]
+        plt.plot(r_inverse_s_values, line_results[r], marker='o', markersize=6, linewidth=2, label=f"$\\mathrm{{s_r}} = 1/{r}$")
 
-plt.xscale('log')
-plt.xlabel("$1/\\mathrm{s_s}$")
-plt.ylabel("$\\sup_{t\\geq0}(u(t) - \\tilde{u}(t))$")
-plt.title("Impact of $1/\\mathrm{s_s}$ on Max Difference for Fixed $\\mathrm{s_r}$ Values (Log Scale)")
-plt.legend()
+plt.xlabel("$\\mathrm{s_s}$", fontsize=14)
+plt.ylabel("$\\frac{1}{T} \\int_0^T |u(t) - \\tilde{u}(t)| dt$", fontsize=14)
+plt.title("Impact of $\\mathrm{s_s}$ on Average Difference for Fixed $1/\\mathrm{s_r}$ Values", fontsize=16)
+plt.legend(fontsize=12)
 plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 plt.tight_layout()
-plt.savefig('plot4_r_fixed_study.svg', format='svg', dpi=300, bbox_inches='tight')
+
+# SVG 파일로 저장
+import datetime
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+plt.savefig(f'figure4_study_{timestamp}.svg', format='svg', dpi=300, bbox_inches='tight')
 plt.show()
+
+print(f"\nSVG 파일이 저장되었습니다: figure4_study_{timestamp}.svg")

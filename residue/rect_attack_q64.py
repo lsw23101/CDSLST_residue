@@ -84,20 +84,20 @@ B = np.array([[0.002269016314383],
           [0.229198990641610]])
 
 
-R_ = np.array([[-24.942201844648217, 22.768032210604431], 
-          [-29.281859888240689, 16.498292275699242], 
-          [-1.714142319638896, 10.445505513068206], 
-          [-0.594319468957815, 4.164460817978995]])
+R_ = np.array([[-2.711203086644444, 1.963316224315184], 
+          [-0.216982902179624, -0.313486996745260], 
+          [-0.115423089429835, 0.730498316552361], 
+          [0.055991142534054, -0.314052234754461]])
 
-G_ = np.array([[0.648532844834861, 34.999112403572752], 
-          [40.260848551562752, -2.337780537613746], 
-          [-22.399739689849856, 5.125843717816062], 
-          [-29.005624939009063, 10.020176358830199]])
+G_ = np.array([[2.045469069819882, 1.633066593297948], 
+          [1.980615785336393, -1.866844647059324], 
+          [-2.570268231442944, 0.757301003832312], 
+          [-0.330294262457960, 0.244716632050707]])
 
-H_ = np.array([[0.014992858827167, -0.061093920878550, 0.000000000000000, 0.000000000000000], 
-          [-0.012837770727062, -0.027876707739698, 0.000000000000000, 0.000000000000000]])
+H_ = np.array([[-0.461010620513824, -0.760867797057168, -0.000000000000000, 0.000000000000001], 
+          [-0.407144784667603, -0.150389370126363, 0.000000000000000, 0.000000000000000]])
 
-P_ = np.array([[-0.235823558054800, -0.898492333652418, -6.632227043309035, 4.989308555529700]])
+P_ = np.array([[-11.343158917072174, -6.626687755976155, -16.429184877793354, 116.215355988387330]])
 
 # L*r*s*s ~ 2^48 정도
 # 40배 정도 더 늘어난거니까
@@ -160,12 +160,12 @@ print("qJ:", qJ)
 # # ## ## ## ## ## ## ## ## Simulation settings # ## ## ## ## ## ## ## ## ## ## ## ## ## ##
 # ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #
 
-iter = 300
+iter = 240
 execution_times = []  # 실행 시간을 저장할 리스트
 
 # 초기값
 
-xp0 = np.array([[0.05], [0.0], [0.05], [0.0]])
+xp0 = np.array([[-0.1], [-0.1], [0.1], [0.1]])
 xc0 = np.array([[0], [0], [0], [0]])
 # Initialize variables with proper int conversion at the beginning
 
@@ -185,30 +185,22 @@ cX0, Bx = lwe.Enc_state(qX0, sk, env)  # 여긱서 암호화 할때 cX0 의 마�
 
 disturbance_values = []
 
-# 핑크 노이즈 생성 함수 (자연스러운 외란)
-def generate_pink_noise(length, amplitude=0.05):
-    # 간단한 1/f 노이즈 생성
-    white_noise = np.random.normal(0, 1, length)
-    # 저주파 성분을 강화하여 자연스러운 변동 생성
-    pink_noise = np.cumsum(white_noise) * 0.01
-    return amplitude * pink_noise / np.max(np.abs(pink_noise))
-
-# 미리 핑크 노이즈 생성
-pink_noise_sequence = generate_pink_noise(iter, amplitude=0.05)
+# 표준정규분포 외란 생성 (표준편차를 0.3으로 줄여서 0에 더 가까운 값들이 나오도록)
+disturbance_sequence = np.random.normal(0, 0.5, iter) * 0.05
 
 for i in range(iter):
     
     start_time = time.time()  # 시작 시간 기록 
     
-    # 기본 핑크 노이즈 외란 (자연스러운 변동)
-    base_disturbance = pink_noise_sequence[i]
+    # 기본 표준정규분포 외란
+    base_disturbance = disturbance_sequence[i]
     
     # 추가 impulse 어택 (200~500 이터레이션)
     additional_disturbance = 0
     if i > 200 and i < 500:
         additional_disturbance = 2
     
-    # 총 외란 = 기본 핑크 노이즈 + 추가 외란
+    # 총 외란 = 기본 표준정규분포 외란 + 추가 외란
     total_disturbance = base_disturbance + additional_disturbance
     
     disturbance_values.append(total_disturbance)  # disturbance 저장
@@ -216,7 +208,7 @@ for i in range(iter):
     '''############# original 컨트롤러 ############## '''
 
     y_.append(C @ x_p[-1])
-    u_.append(P_ @ x_c[-1] + total_disturbance)  # total_disturbance 사용
+    u_.append(P_ @ x_c[-1] + total_disturbance)  # 표준정규분포 외란 사용
     r_.append(H_ @ x_c[-1] + J_ @ y_[-1])
     x_p.append(A @ x_p[-1] + B @ u_[-1])
     x_c.append(F_ @ x_c[-1] + G_ @ y_[-1] + R_ @ r_[-1])
@@ -243,7 +235,7 @@ for i in range(iter):
     # controller
     
     cU.append(lwe.Mod(qP @ cX0, env.q))
-    cU[-1][0][0] += total_disturbance * int(env.L * r_scale * s_scale**2)  # total_disturbance 사용
+    cU[-1][0][0] += total_disturbance * int(env.L * r_scale * s_scale**2)  # 표준정규분포 외란 사용
     # cU[-1][0][0] += disturbance * 10**15
     # print("cU",cU[-1])   # 첫 번째 요소에만 disturbance 더하기
     # print("cU[-1][0][0]",cU[-1][0][0])
@@ -347,11 +339,11 @@ timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # 1. Original input (u_) vs Encrypted input (U)
 plt.figure(figsize=(8, 4))
-plt.plot(time, U, label='Encrypted Controller', linestyle='-', color='r')
-plt.plot(time, u_, label='Original Controller', linestyle='--', color='b')
-plt.plot(time, disturbance_values, label='Attack', linestyle=':', color='k')
+plt.plot(time, U, label='$\\tilde{u}(t)$', linestyle='-', color='r')
+plt.plot(time, u_, label='$u(t)$', linestyle='--', color='b')
+plt.plot(time, disturbance_values, label='$a(t)$', linestyle=':', color='k')
 plt.xlabel('Time (sec)')
-plt.ylabel('u(t)')
+plt.ylabel('$\\tilde{u}(t)$, $u(t)$, $a(t)$')
 plt.legend()
 plt.grid(True)
 plt.savefig(f'plot1_controller_comparison_{timestamp}.svg', format='svg', dpi=300, bbox_inches='tight')
@@ -359,14 +351,14 @@ plt.show()
 
 # 2. Difference between u_ and U (절댓값, 어택 전만)
 diff_u_plot = np.abs(diff_u)
-# 사인파 외란은 계속 있으므로, 추가 외란(2)이 들어가는 구간을 찾아야 함
+# 표준정규분포 외란은 계속 있으므로, 추가 외란(2)이 들어가는 구간을 찾아야 함
 attack_start_idx = np.argmax(disturbance_values > 0.1)  # 0.1보다 큰 값이 들어가는 첫 인덱스 (추가 외란 구간)
 if attack_start_idx == 0:  # 추가 외란이 없으면 전체 플롯
     attack_start_idx = len(time)
 plt.figure(figsize=(8, 4))
-plt.plot(time[:attack_start_idx], diff_u_plot[:attack_start_idx], label='||u_diff|| (before attack)', color='g', linestyle='-')
+plt.plot(time[:attack_start_idx], diff_u_plot[:attack_start_idx], label='$|u(t) - \\tilde{u}(t)|$ (before attack)', color='g', linestyle='-')
 plt.xlabel('Time (sec)')
-plt.ylabel('|u_origin - u_encrypted|')
+plt.ylabel('$|u(t) - \\tilde{u}(t)|$')
 plt.legend()
 plt.grid(True)
 plt.savefig(f'plot2_control_difference_{timestamp}.svg', format='svg', dpi=300, bbox_inches='tight')
@@ -374,19 +366,33 @@ plt.show()
 
 # 3. Residue Disclosure
 plt.figure(figsize=(8, 4))
-plt.plot(time, resi[0, :], label='Residue of y_1', color='m', linestyle='--')
-plt.plot(time, resi[1, :], label='Residue of y_2', color='y', linestyle='-')
+plt.plot(time, resi[0, :], label='$r_p(t)$', color='m', linestyle='--')
+plt.plot(time, resi[1, :], label='$r_\\phi(t)$', color='y', linestyle='-')
 plt.xlabel('Time (sec)')
-plt.ylabel('r(t)')
+plt.ylabel('$r(t)$')
 plt.legend()
 plt.grid(True)
 plt.savefig(f'plot3_residue_disclosure_{timestamp}.svg', format='svg', dpi=300, bbox_inches='tight')
+plt.show()
+
+# 4. Plant output y(t)
+plt.figure(figsize=(8, 4))
+plt.plot(time, Y[0, :], label='$\\tilde{y}_1(t)$', linestyle='-', color='r')
+plt.plot(time, y_[0, :], label='$y_1(t)$', linestyle='--', color='b')
+plt.plot(time, Y[1, :], label='$\\tilde{y}_2(t)$', linestyle='-', color='m')
+plt.plot(time, y_[1, :], label='$y_2(t)$', linestyle='--', color='c')
+plt.xlabel('Time (sec)')
+plt.ylabel('$y(t)$')
+plt.legend()
+plt.grid(True)
+plt.savefig(f'plot4_plant_output_{timestamp}.svg', format='svg', dpi=300, bbox_inches='tight')
 plt.show()
 
 print(f"\nSVG 파일들이 저장되었습니다:")
 print(f"- plot1_controller_comparison_{timestamp}.svg")
 print(f"- plot2_control_difference_{timestamp}.svg") 
 print(f"- plot3_residue_disclosure_{timestamp}.svg")
+print(f"- plot4_plant_output_{timestamp}.svg")
 
 
 # time check
